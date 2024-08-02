@@ -303,21 +303,24 @@ function initPlayer(id, handle, options) {
                 }
 
                 // Ad-blocking logic
-                setInterval(() => {
-                    try {
-                        var skipButton = media.youTubeApi.getIframe().contentWindow.document.querySelector('.ytp-ad-skip-button');
-                        if (skipButton) {
-                            skipButton.click();
-                        }
+                const adCheckInterval = setInterval(() => {
+                    const iframe = media.youTubeApi.getIframe();
+                    const skipButton = iframe.contentWindow.document.querySelector('.ytp-ad-skip-button');
+                    const closeButton = iframe.contentWindow.document.querySelector('.ytp-ad-overlay-close-button');
 
-                        var closeAdButton = media.youTubeApi.getIframe().contentWindow.document.querySelector('.ytp-ad-overlay-close-button');
-                        if (closeAdButton) {
-                            closeAdButton.click();
-                        }
-                    } catch (error) {
-                        console.error("Ad-blocking error:", error);
+                    if (skipButton) {
+                        skipButton.click();
                     }
-                }, 1000); // Check for ads every second
+                    if (closeButton) {
+                        closeButton.click();
+                    }
+
+                    // Check if the ad is still playing
+                    const isAdPlaying = iframe.contentWindow.document.querySelector('.ytp-ad-player-overlay');
+                    if (!isAdPlaying) {
+                        clearInterval(adCheckInterval);
+                    }
+                }, 1000);
             });
 
             media.play();
