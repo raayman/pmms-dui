@@ -304,14 +304,18 @@ function initPlayer(id, handle, options) {
 
                 // Ad-blocking logic
                 setInterval(() => {
-                    var skipButton = media.youTubeApi.getIframe().contentWindow.document.querySelector('.ytp-ad-skip-button');
-                    if (skipButton) {
-                        skipButton.click();
-                    }
+                    try {
+                        var skipButton = media.youTubeApi.getIframe().contentWindow.document.querySelector('.ytp-ad-skip-button');
+                        if (skipButton) {
+                            skipButton.click();
+                        }
 
-                    var closeAdButton = media.youTubeApi.getIframe().contentWindow.document.querySelector('.ytp-ad-overlay-close-button');
-                    if (closeAdButton) {
-                        closeAdButton.click();
+                        var closeAdButton = media.youTubeApi.getIframe().contentWindow.document.querySelector('.ytp-ad-overlay-close-button');
+                        if (closeAdButton) {
+                            closeAdButton.click();
+                        }
+                    } catch (error) {
+                        console.error("Ad-blocking error:", error);
                     }
                 }, 1000); // Check for ads every second
             });
