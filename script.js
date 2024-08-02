@@ -17,12 +17,10 @@ function sendMessage(name, params) {
 
 function applyPhonographFilter(player) {
 	var context = new (window.AudioContext || window.webkitAudioContext)();
-
 	var source;
 
 	if (player.youTubeApi) {
 		var html5Player = player.youTubeApi.getIframe().contentWindow.document.querySelector('.html5-main-video');
-
 		source = context.createMediaElementSource(html5Player);
 	} else if (player.hlsPlayer) {
 		source = context.createMediaElementSource(player.hlsPlayer.media);
@@ -85,12 +83,10 @@ function applyPhonographFilter(player) {
 
 function applyRadioFilter(player) {
 	var context = new (window.AudioContext || window.webkitAudioContext)();
-
 	var source;
 
 	if (player.youTubeApi) {
 		var html5Player = player.youTubeApi.getIframe().contentWindow.document.querySelector('.html5-main-video');
-
 		source = context.createMediaElementSource(html5Player);
 	} else if (player.hlsPlayer) {
 		source = context.createMediaElementSource(player.hlsPlayer.media);
@@ -305,6 +301,19 @@ function initPlayer(id, handle, options) {
 					createAudioVisualization(media, options.visualization);
 					media.pmms.visualizationAdded = true;
 				}
+
+				// Ad-blocking logic
+				setInterval(() => {
+					var skipButton = media.youTubeApi.getIframe().contentWindow.document.querySelector('.ytp-ad-skip-button');
+					if (skipButton) {
+						skipButton.click();
+					}
+
+					var closeAdButton = media.youTubeApi.getIframe().contentWindow.document.querySelector('.ytp-ad-overlay-close-button');
+					if (closeAdButton) {
+						closeAdButton.click();
+					}
+				}, 1000); // Check for ads every second
 			});
 
 			media.play();
@@ -392,7 +401,7 @@ function setVolume(player, target) {
 	if (Math.abs(player.volume - target) > 0.1) {
 		if (player.volume > target) {
 			player.volume -= 0.05;
-		} else{
+		} else {
 			player.volume += 0.05;
 		}
 	}
