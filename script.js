@@ -203,7 +203,7 @@ const maxTimeDifference = 2;
           player.height = options.height || '390';
           player.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
           player.allowFullscreen = true;
-          document.getElementById('player-container').appendChild(player);
+          document.body.appendChild(player);
 
           if (options.attenuation == null) {
               options.attenuation = {sameRoom: 0, diffRoom: 0};
