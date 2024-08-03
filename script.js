@@ -268,7 +268,7 @@ function initPlayer(id, handle, options) {
     });
 
     // Ensure pmms object is initialized
-    playerElem.pmms = {
+    player.pmms = {
         initialized: false,
         attenuationFactor: options.attenuation.diffRoom,
         volumeFactor: options.diffRoomVolume
@@ -281,13 +281,13 @@ function initPlayer(id, handle, options) {
             message: playerElem.error.message
         });
 
-        if (!playerElem.pmms.initialized) {
+        if (!player.pmms.initialized) {
             playerElem.remove();
         }
     });
 
     playerElem.addEventListener('canplay', () => {
-        if (playerElem.pmms.initialized) {
+        if (player.pmms.initialized) {
             return;
         }
 
@@ -311,23 +311,23 @@ function initPlayer(id, handle, options) {
             options: options
         });
 
-        playerElem.pmms.initialized = true;
+        player.pmms.initialized = true;
         player.play();
     });
 
     playerElem.addEventListener('playing', () => {
-        if (options.filter && !playerElem.pmms.filterAdded) {
+        if (options.filter && !player.pmms.filterAdded) {
             if (isRDR) {
                 applyPhonographFilter(player);
             } else {
                 applyRadioFilter(player);
             }
-            playerElem.pmms.filterAdded = true;
+            player.pmms.filterAdded = true;
         }
 
-        if (options.visualization && !playerElem.pmms.visualizationAdded) {
+        if (options.visualization && !player.pmms.visualizationAdded) {
             createAudioVisualization(player, options.visualization);
-            playerElem.pmms.visualizationAdded = true;
+            player.pmms.visualizationAdded = true;
         }
     });
 
