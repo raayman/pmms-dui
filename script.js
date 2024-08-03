@@ -17,20 +17,7 @@ function sendMessage(name, params) {
 
 function applyPhonographFilter(player) {
 	var context = new (window.AudioContext || window.webkitAudioContext)();
-
-	var source;
-
-	if (player.youTubeApi) {
-		var html5Player = player.youTubeApi.getIframe().contentWindow.document.querySelector('.html5-main-video');
-
-		source = context.createMediaElementSource(html5Player);
-	} else if (player.hlsPlayer) {
-		source = context.createMediaElementSource(player.hlsPlayer.media);
-	} else if (player.originalNode) {
-		source = context.createMediaElementSource(player.originalNode);
-	} else {
-		source = context.createMediaElementSource(player);
-	}
+	var source = context.createMediaElementSource(player._sounds[0]._node);
 
 	if (source) {
 		var splitter = context.createChannelSplitter(2);
@@ -60,45 +47,34 @@ function applyPhonographFilter(player) {
 		highpass.connect(context.destination);
 	}
 
-	var noise = document.createElement('audio');
-	noise.id = player.id + '_noise';
-	noise.src = 'https://redm.khzae.net/phonograph/noise.webm';
-	noise.volume = 0;
-	document.body.appendChild(noise);
+	var noise = new Howl({
+		src: ['https://redm.khzae.net/phonograph/noise.webm'],
+		volume: 0,
+		html5: true
+	});
+
+	player.noise = noise;
 	noise.play();
 
 	player.style.filter = 'sepia()';
 
-	player.addEventListener('play', event => {
+	player.on('play', () => {
 		noise.play();
 	});
-	player.addEventListener('pause', event => {
+	player.on('pause', () => {
 		noise.pause();
 	});
-	player.addEventListener('volumechange', event => {
-		noise.volume = player.volume;
+	player.on('volume', () => {
+		noise.volume(player.volume());
 	});
-	player.addEventListener('seeked', event => {
-		noise.currentTime = player.currentTime;
+	player.on('seek', () => {
+		noise.seek(player.seek());
 	});
 }
 
 function applyRadioFilter(player) {
 	var context = new (window.AudioContext || window.webkitAudioContext)();
-
-	var source;
-
-	if (player.youTubeApi) {
-		var html5Player = player.youTubeApi.getIframe().contentWindow.document.querySelector('.html5-main-video');
-
-		source = context.createMediaElementSource(html5Player);
-	} else if (player.hlsPlayer) {
-		source = context.createMediaElementSource(player.hlsPlayer.media);
-	} else if (player.originalNode) {
-		source = context.createMediaElementSource(player.originalNode);
-	} else {
-		source = context.createMediaElementSource(player);
-	}
+	var source = context.createMediaElementSource(player._sounds[0]._node);
 
 	if (source) {
 		var splitter = context.createChannelSplitter(2);
@@ -138,50 +114,14 @@ function createAudioVisualization(player, visualization) {
 	waveCanvas.style.width = '100%';
 	waveCanvas.style.height = '100%';
 
-	player.appendChild(waveCanvas);
+	document.body.appendChild(waveCanvas);
 
-	var html5Player;
-
-	if (player.youTubeApi) {
-		html5Player = player.youTubeApi.getIframe().contentWindow.document.querySelector('.html5-main-video');
-	} else if (player.hlsPlayer) {
-		html5Player = player.hlsPlayer.media;
-	} else if (player.originalNode) {
-		html5Player = player.originalNode;
-	} else {
-		html5Player = player;
-	}
-
-	if (!html5Player.id) {
-		html5Player.id = player.id + '_html5Player';
-	}
-
-	html5Player.style.visibility = 'hidden';
-
-	var doc = player.youTubeApi ? player.youTubeApi.getIframe().contentWindow.document : document;
-
-	if (player.youTubeApi) {
-		player.youTubeApi.getIframe().style.visibility = 'hidden';
-	}
+	var options = audioVisualizations[visualization] || {};
+	options.element = waveCanvas;
+	options.type = options.type || visualization;
 
 	var wave = new Wave();
-
-	var options;
-
-	if (visualization) {
-		options = audioVisualizations[visualization] || {};
-
-		if (options.type == undefined) {
-			options.type = visualization;
-		}
-	} else {
-		options = {type: 'cubes'}
-	}
-
-	options.skipUserEventsWatcher = true;
-	options.elementDoc = doc;
-
-	wave.fromElement(html5Player.id, waveCanvas.id, options);
+	wave.fromElement(player._sounds[0]._node.id, waveCanvas.id, options);
 }
 
 function showLoadingIcon() {
@@ -201,82 +141,82 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-    var playerContainer = document.createElement('div');
-    playerContainer.id = id;
-    document.body.appendChild(playerContainer);
+	var playerContainer = document.createElement('div');
+	playerContainer.id = id;
+	document.body.appendChild(playerContainer);
 
-    if (options.attenuation == null) {
-        options.attenuation = {sameRoom: 0, diffRoom: 0};
-    }
+	if (options.attenuation == null) {
+		options.attenuation = {sameRoom: 0, diffRoom: 0};
+	}
 
-    const sound = new Howl({
-        src: [options.url],
-        html5: true,
-        volume: 0,
-		autoplay: false,
-		format: ['mp3'],
-        onloaderror: function(id, error) {
-            hideLoadingIcon();
-            sendMessage('initError', {
-                url: options.url,
-                message: error
-            });
-        },
-        onplayerror: function(id, error) {
-            hideLoadingIcon();
-            sendMessage('playError', {
-                url: options.url,
-                message: error
-            });
-            if (!sound._pmms.initialized) {
-                sound.unload();
-            }
-        },
-        onload: function() {
-            hideLoadingIcon();
-            sound._pmms = {
-                initialized: false,
-                attenuationFactor: options.attenuation.diffRoom,
-                volumeFactor: options.diffRoomVolume
-            };
+	const sound = new Howl({
+		src: [resolveUrl(options.url)],
+		html5: true,
+		volume: 0,
+		onloaderror: function(id, error) {
+			hideLoadingIcon();
+			sendMessage('initError', {
+				url: options.url,
+				message: error
+			});
+		},
+		onplayerror: function(id, error) {
+			hideLoadingIcon();
+			sendMessage('playError', {
+				url: options.url,
+				message: error
+			});
+			if (!sound._pmms.initialized) {
+				sound.unload();
+			}
+		},
+		onload: function() {
+			hideLoadingIcon();
+			sound._pmms = {
+				initialized: false,
+				attenuationFactor: options.attenuation.diffRoom,
+				volumeFactor: options.diffRoomVolume
+			};
 
-            if (!isFinite(sound.duration()) || sound.duration() === 0) {
-                options.offset = 0;
-                options.duration = false;
-                options.loop = false;
-            } else {
-                options.duration = sound.duration();
-            }
+			if (!isFinite(sound.duration()) || sound.duration() === 0) {
+				options.offset = 0;
+				options.duration = false;
+				options.loop = false;
+			} else {
+				options.duration = sound.duration();
+			}
 
-            options.video = true;
-            options.videoSize = 0;
+			options.video = true;
+			options.videoSize = 0;
 
-            sendMessage('init', {
-                handle: handle,
-                options: options
-            });
+			sendMessage('init', {
+				handle: handle,
+				options: options
+			});
 
-            sound._pmms.initialized = true;
-            sound.play();
-        },
-        onplay: function() {
-            if (options.filter && !sound._pmms.filterAdded) {
-                if (isRDR) {
-                    applyPhonographFilter(sound);
-                } else {
-                    applyRadioFilter(sound);
-                }
-                sound._pmms.filterAdded = true;
-            }
+			sound._pmms.initialized = true;
+			sound.play();
+		},
+		onplay: function() {
+			if (options.filter && !sound._pmms.filterAdded) {
+				if (isRDR) {
+					applyPhonographFilter(sound);
+				} else {
+					applyRadioFilter(sound);
+				}
+				sound._pmms.filterAdded = true;
+			}
 
-            if (options.visualization && !sound._pmms.visualizationAdded) {
-                createAudioVisualization(sound, options.visualization);
-                sound._pmms.visualizationAdded = true;
-            }
-        }
-    });
+			if (options.visualization && !sound._pmms.visualizationAdded) {
+				createAudioVisualization(sound, options.visualization);
+				sound._pmms.visualizationAdded = true;
+			}
+		}
+	});
+
+	playerContainer.sound = sound;
+	return sound;
 }
-
 
 function getPlayer(handle, options) {
 	if (handle == undefined) {
@@ -284,14 +224,13 @@ function getPlayer(handle, options) {
 	}
 
 	var id = 'player_' + handle.toString();
+	var playerContainer = document.getElementById(id);
 
-	var player = document.getElementById(id);
-
-	if (!player && options && options.url) {
-		player = initPlayer(id, handle, options);
+	if (!playerContainer && options && options.url) {
+		playerContainer = initPlayer(id, handle, options);
 	}
 
-	return player;
+	return playerContainer.sound;
 }
 
 function parseTimecode(timecode) {
@@ -329,37 +268,35 @@ function stop(handle) {
 	var player = getPlayer(handle);
 
 	if (player) {
-		var noise = document.getElementById(player.id + '_noise');
-		if (noise) {
-			noise.remove();
+		if (player.noise) {
+			player.noise.unload();
 		}
-
-		player.remove();
+		player.unload();
 	}
 }
 
 function setAttenuationFactor(player, target) {
-	if (player.pmms.attenuationFactor > target) {
-		player.pmms.attenuationFactor -= 0.1;
+	if (player._pmms.attenuationFactor > target) {
+		player._pmms.attenuationFactor -= 0.1;
 	} else {
-		player.pmms.attenuationFactor += 0.1;
+		player._pmms.attenuationFactor += 0.1;
 	}
 }
 
 function setVolumeFactor(player, target) {
-	if (player.pmms.volumeFactor > target) {
-		player.pmms.volumeFactor -= 0.01;
+	if (player._pmms.volumeFactor > target) {
+		player._pmms.volumeFactor -= 0.01;
 	} else {
-		player.pmms.volumeFactor += 0.01;
+		player._pmms.volumeFactor += 0.01;
 	}
 }
 
 function setVolume(player, target) {
-	if (Math.abs(player.volume - target) > 0.1) {
-		if (player.volume > target) {
-			player.volume -= 0.05;
-		} else{
-			player.volume += 0.05;
+	if (Math.abs(player.volume() - target) > 0.1) {
+		if (player.volume() > target) {
+			player.volume(player.volume() - 0.05);
+		} else {
+			player.volume(player.volume() + 0.05);
 		}
 	}
 }
@@ -369,7 +306,7 @@ function update(data) {
 
 	if (player) {
 		if (data.options.paused || data.distance < 0 || data.distance > data.options.range) {
-			if (!player.paused) {
+			if (player.playing()) {
 				player.pause();
 			}
 		} else {
@@ -381,36 +318,29 @@ function update(data) {
 				setVolumeFactor(player, data.options.diffRoomVolume);
 			}
 
-			if (player.readyState > 0) {
-				var volume;
+			var volume;
+			if (data.options.muted || data.volume == 0) {
+				volume = 0;
+			} else {
+				volume = (((100 - data.distance * player._pmms.attenuationFactor) / 100) * player._pmms.volumeFactor) * (data.volume / 100);
+			}
 
-				if (data.options.muted || data.volume == 0) {
-					volume = 0;
-				} else {
-					volume = (((100 - data.distance * player.pmms.attenuationFactor) / 100) * player.pmms.volumeFactor) * (data.volume / 100);
+			if (volume > 0) {
+				setVolume(player, volume);
+			} else {
+				player.volume(0);
+			}
+
+			if (data.options.duration) {
+				var currentTime = data.options.offset % player.duration();
+
+				if (Math.abs(currentTime - player.seek()) > maxTimeDifference) {
+					player.seek(currentTime);
 				}
+			}
 
-				if (volume > 0) {
-					if (data.distance > 100) {
-						setVolume(player, volume);
-					} else {
-						player.volume = volume;
-					}
-				} else {
-					player.volume = 0;
-				}
-
-				if (data.options.duration) {
-					var currentTime = data.options.offset % player.duration;
-
-					if (Math.abs(currentTime - player.currentTime) > maxTimeDifference) {
-						player.currentTime = currentTime;
-					}
-				}
-
-				if (player.paused) {
-					player.play();
-				}
+			if (!player.playing()) {
+				player.play();
 			}
 		}
 	}
