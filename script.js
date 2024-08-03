@@ -1,6 +1,6 @@
 const maxTimeDifference = 2;
 
-var resourceName = 'pmms';
+var resourceName = 'nass_musicplayer';
 var isRDR = true;
 var audioVisualizations = {};
 var currentServerEndpoint = '127.0.0.1:30120';
@@ -201,6 +201,8 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
+	console.log("naji")
+	console.log(options.url)
 	var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
 	var proxyUrl = `http://51.81.49.239:3000/watch?v=${videoId}`;
 	
