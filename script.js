@@ -308,7 +308,7 @@ function setResourceNameFromUrl() {
 window.addEventListener('message', event => {
 	switch (event.data.type) {
 		case 'init':
-			init(event.data);
+			init(event.data.data);
 			break;
 		case 'play':
 			play(event.data.handle);
