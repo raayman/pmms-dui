@@ -201,84 +201,74 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-	var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
-	var proxyUrl = options.url;
-	
-	var player = document.createElement('video');
-	player.id = id;
-	player.src = proxyUrl;
-	document.body.appendChild(player);
-	
-	new MediaElement(player, {
-	    error: function(media) {
-		hideLoadingIcon();
-		sendMessage('initError', {
-		    url: proxyUrl,
-		    message: media.error.message
-		});
-		media.remove();
-	    },
-	    success: function(media, domNode) {
-		media.className = 'player';
-		media.pmms = {};
-		media.pmms.initialized = false;
-		media.pmms.attenuationFactor = options.attenuation.diffRoom;
-		media.pmms.volumeFactor = options.diffRoomVolume;
-		media.volume = 0;
-	
-		media.addEventListener('error', event => {
-		    hideLoadingIcon();
-		    sendMessage('playError', {
-			url: proxyUrl,
-			message: media.error.message
-		    });
-		    if (!media.pmms.initialized) {
-			media.remove();
-		    }
-		});
-	
-		media.addEventListener('canplay', () => {
-		    if (media.pmms.initialized) {
-			return;
-		    }
-		    hideLoadingIcon();
-		    if (isNaN(media.duration) || media.duration == Infinity || media.duration == 0 || media.hlsPlayer) {
-			options.offset = 0;
-			options.duration = false;
-			options.loop = false;
-		    } else {
-			options.duration = media.duration;
-		    }
-	
-		    options.video = true;
-		    options.videoSize = 0;
-		    sendMessage('init', {
-			handle: handle,
-			options: options
-		    });
-		    media.pmms.initialized = true;
-		    media.play();
-		});
-	
-		media.addEventListener('playing', () => {
-		    if (options.filter && !media.pmms.filterAdded) {
-			if (isRDR) {
-			    applyPhonographFilter(media);
-			} else {
-			    applyRadioFilter(media);
-			}
-			media.pmms.filterAdded = true;
-		    }
-		    if (options.visualization && !media.pmms.visualizationAdded) {
-			createAudioVisualization(media, options.visualization);
-			media.pmms.visualizationAdded = true;
-		    }
-		});
-	
-		media.play();
-	    }
-	});
+    var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
+    var proxyUrl = options.url;
+    
+    var player = document.createElement('video');
+    player.id = id;
+    player.src = proxyUrl;
+    document.body.appendChild(player);
+
+    // Create Howl instance
+    var howl = new Howl({
+        src: [proxyUrl],
+        volume: 0,
+        onloaderror: function(id, error) {
+            hideLoadingIcon();
+            sendMessage('initError', {
+                url: proxyUrl,
+                message: error.message
+            });
+        },
+        onplayerror: function(id, error) {
+            hideLoadingIcon();
+            sendMessage('playError', {
+                url: proxyUrl,
+                message: error.message
+            });
+        },
+        onload: function() {
+            hideLoadingIcon();
+            if (howl.duration() === Infinity || howl.duration() === 0) {
+                options.offset = 0;
+                options.duration = false;
+                options.loop = false;
+            } else {
+                options.duration = howl.duration();
+            }
+
+            options.video = true;
+            options.videoSize = 0;
+            sendMessage('init', {
+                handle: handle,
+                options: options
+            });
+
+            howl.volume(options.diffRoomVolume);
+            howl.play();
+        },
+        onplay: function() {
+            if (options.filter && !player.pmms.filterAdded) {
+                if (isRDR) {
+                    applyPhonographFilter(howl);
+                } else {
+                    applyRadioFilter(howl);
+                }
+                player.pmms.filterAdded = true;
+            }
+            if (options.visualization && !player.pmms.visualizationAdded) {
+                createAudioVisualization(howl, options.visualization);
+                player.pmms.visualizationAdded = true;
+            }
+        }
+    });
+
+    player.pmms = {};
+    player.pmms.initialized = false;
+    player.pmms.attenuationFactor = options.attenuation.diffRoom;
+    player.pmms.volumeFactor = options.diffRoomVolume;
 }
+
 
 function getPlayer(handle, options) {
 	if (handle == undefined) {
