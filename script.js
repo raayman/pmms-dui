@@ -201,85 +201,39 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-	console.log("naji")
-	console.log(options.url)
 	var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
 	var proxyUrl = `http://51.81.49.239:3000/watch?v=${videoId}`;
-	
-	var player = document.createElement('video');
-	player.id = id;
-	player.src = proxyUrl;
-	document.body.appendChild(player);
-	
-	new MediaElement(player, {
-	    error: function(media) {
-		hideLoadingIcon();
-		sendMessage('initError', {
-		    url: proxyUrl,
-		    message: media.error.message
-		});
-		media.remove();
-	    },
-	    success: function(media, domNode) {
-		media.className = 'player';
-		media.pmms = {};
-		media.pmms.initialized = false;
-		media.pmms.attenuationFactor = options.attenuation.diffRoom;
-		media.pmms.volumeFactor = options.diffRoomVolume;
-		media.volume = 0;
-	
-		media.addEventListener('error', event => {
-		    hideLoadingIcon();
-		    sendMessage('playError', {
-			url: options.url,
-			message: media.error.message
-		    });
-		    if (!media.pmms.initialized) {
-			media.remove();
-		    }
-		});
-	
-		media.addEventListener('canplay', () => {
-		    if (media.pmms.initialized) {
-			return;
-		    }
-		    hideLoadingIcon();
-		    if (isNaN(media.duration) || media.duration == Infinity || media.duration == 0 || media.hlsPlayer) {
-			options.offset = 0;
-			options.duration = false;
-			options.loop = false;
-		    } else {
-			options.duration = media.duration;
-		    }
-	
-		    options.video = true;
-		    options.videoSize = 0;
-		    sendMessage('init', {
-			handle: handle,
-			options: options
-		    });
-		    media.pmms.initialized = true;
-		    media.play();
-		});
-	
-		media.addEventListener('playing', () => {
-		    if (options.filter && !media.pmms.filterAdded) {
-			if (isRDR) {
-			    applyPhonographFilter(media);
-			} else {
-			    applyRadioFilter(media);
-			}
-			media.pmms.filterAdded = true;
-		    }
-		    if (options.visualization && !media.pmms.visualizationAdded) {
-			createAudioVisualization(media, options.visualization);
-			media.pmms.visualizationAdded = true;
-		    }
-		});
-	
-		media.play();
-	    }
-	});
+
+        var player = document.createElement('div');
+        player.id = id;
+        document.body.appendChild(player);
+
+        new YT.Player(id, {
+            height: '390',
+            width: '640',
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 1,
+                'controls': 1,
+                'rel': 0,
+                'modestbranding': 1,
+                'iv_load_policy': 3,
+                'disablekb': 1,
+                'fs': 0
+            },
+            events: {
+                'onReady': function(event) {
+                    event.target.playVideo();
+                },
+                'onError': function(event) {
+                    hideLoadingIcon();
+                    sendMessage('initError', {
+                        url: options.url,
+                        message: event.data
+                    });
+                }
+            }
+        });
 }
 
 function getPlayer(handle, options) {
