@@ -264,8 +264,8 @@ function initPlayer(id, handle, options) {
         }
     });
 
-    // Initialize the player with the Howl instance
-    document.body.appendChild(player);
+    window.audioPlayers = window.audioPlayers || {};
+    window.audioPlayers[id] = player;
 }
 
 function getPlayer(handle, options) {
