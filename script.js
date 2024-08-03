@@ -82,98 +82,70 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-    var player = document.createElement('div');
-    player.id = id;
-    document.body.appendChild(player);
+  // Create a Howl object with options
+  const player = new Howl({
+    src: resolveUrl(options.url), // Pass URL through resolver if needed
+    autoplay: false, // Don't autoplay by default
+    loop: options.loop || false, // Set loop based on options
+    volume: 0, // Set initial volume to 0
+  });
 
-    if (options.attenuation == null) {
-        options.attenuation = { sameRoom: 0, diffRoom: 0 };
+  // Handle errors similar to MediaElement error handler
+  player.on('loaderror', () => {
+    hideLoadingIcon();
+    sendMessage('initError', {
+      url: options.url,
+      message: 'Failed to load audio'
+    });
+  });
+
+  // Handle canplay event similar to MediaElement canplay
+  player.on('load', () => {
+    if (player._sounds[0].loaded) { // Check if audio is fully loaded
+      hideLoadingIcon();
+
+      const duration = player.duration();
+      options.duration = duration !== Infinity ? duration : false;
+      options.offset = 0; // No offset handling in Howler.js
+
+      // Handle video specific options (not directly supported by Howl)
+      if (options.video) {
+        options.video = false; // Mark it as not video in Howler.js
+        console.warn('Howler.js doesn\'t support video playback directly.');
+      }
+
+      sendMessage('init', {
+        handle: handle,
+        options: options
+      });
+
+      // Play audio after sending init message
+      player.play();
+    }
+  });
+
+  // Handle playing event for visualizations and filters (if needed)
+  player.on('play', () => {
+    if (options.filter) {
+      console.warn('Howler.js doesn\'t directly support audio filters.');
     }
 
-    const sound = new Howl({
-        src: [resolveUrl(options.url)],
-        volume: 0,
-        onload: function() {
-            hideLoadingIcon();
-            sendMessage('init', {
-                handle: handle,
-                options: options
-            });
-        },
-        onloaderror: function(id, error) {
-            hideLoadingIcon();
-            sendMessage('initError', {
-                url: options.url,
-                message: error
-            });
-            player.remove();
-        },
-        onplayerror: function(id, error) {
-            hideLoadingIcon();
-            sendMessage('playError', {
-                url: options.url,
-                message: error
-            });
-            if (!player.sound.pmms.initialized) {
-                player.remove();
-            }
-        }
-    });
+    if (options.visualization) {
+      createAudioVisualization(player, options.visualization);
+    }
+  });
 
-    player.sound = sound;
-    player.sound.pmms = {
-        initialized: false,
-        attenuationFactor: options.attenuation.diffRoom,
-        volumeFactor: options.diffRoomVolume,
-        filterAdded: false,
-        visualizationAdded: false
-    };
+  // Handle volume attenuation (needs additional logic)
+  if (options.attenuation) {
+    console.warn('Howler.js doesn\'t directly support attenuation. Implement logic for adjusting volume based on attenuation values.');
+  }
 
-    sound.on('play', function() {
-        if (player.sound.pmms.initialized) {
-            return;
-        }
-        hideLoadingIcon();
+  // Handle diffRoomVolume (needs additional logic)
+  if (options.diffRoomVolume) {
+    console.warn('Howler.js volume is global. Implement logic for adjusting volume based on diffRoomVolume.');
+  }
 
-        if (sound.duration() == NaN || sound.duration() == Infinity || sound.duration() == 0) {
-            options.offset = 0;
-            options.duration = false;
-            options.loop = false;
-        } else {
-            options.duration = sound.duration();
-        }
-
-        options.video = false; // Setting video to false as we're using Howler.js for audio
-
-        sendMessage('init', {
-            handle: handle,
-            options: options
-        });
-
-        player.sound.pmms.initialized = true;
-    });
-
-    sound.on('end', function() {
-        player.remove();
-    });
-
-    sound.on('play', function() {
-        if (options.filter && !player.sound.pmms.filterAdded) {
-            if (isRDR) {
-                applyPhonographFilter(sound);
-            } else {
-                applyRadioFilter(sound);
-            }
-            player.sound.pmms.filterAdded = true;
-        }
-
-        if (options.visualization && !player.sound.pmms.visualizationAdded) {
-            createAudioVisualization(player, options.visualization);
-            player.sound.pmms.visualizationAdded = true;
-        }
-    });
-
-    return player;
+  return player; // Return the created Howl object for further control
 }
 
 
