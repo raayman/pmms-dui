@@ -82,51 +82,100 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-	var player = document.createElement('div');
-	player.id = id;
-	document.body.appendChild(player);
+    var player = document.createElement('div');
+    player.id = id;
+    document.body.appendChild(player);
 
-	if (options.attenuation == null) {
-		options.attenuation = {sameRoom: 0, diffRoom: 0};
-	}
+    if (options.attenuation == null) {
+        options.attenuation = { sameRoom: 0, diffRoom: 0 };
+    }
 
-	const sound = new Howl({
-		src: [resolveUrl(options.url)],
-		volume: 0,
-		onload: function() {
-			hideLoadingIcon();
-			sendMessage('init', {
-				handle: handle,
-				options: options
-			});
-		},
-		onplay: function() {
-			if (options.filter) {
-				if (isRDR) {
-					applyPhonographFilter(sound);
-				} else {
-					applyRadioFilter(sound);
-				}
-			}
-			if (options.visualization) {
-				createAudioVisualization(player, options.visualization);
-			}
-		},
-		onend: function() {
-			player.remove();
-		},
-		onloaderror: function(id, error) {
-			hideLoadingIcon();
-			sendMessage('initError', {
-				url: options.url,
-				message: error
-			});
-		}
-	});
+    const sound = new Howl({
+        src: [resolveUrl(options.url)],
+        volume: 0,
+        onload: function() {
+            hideLoadingIcon();
+            sendMessage('init', {
+                handle: handle,
+                options: options
+            });
+        },
+        onloaderror: function(id, error) {
+            hideLoadingIcon();
+            sendMessage('initError', {
+                url: options.url,
+                message: error
+            });
+            player.remove();
+        },
+        onplayerror: function(id, error) {
+            hideLoadingIcon();
+            sendMessage('playError', {
+                url: options.url,
+                message: error
+            });
+            if (!player.sound.pmms.initialized) {
+                player.remove();
+            }
+        }
+    });
 
-	player.sound = sound;
-	return player;
+    player.sound = sound;
+    player.sound.pmms = {
+        initialized: false,
+        attenuationFactor: options.attenuation.diffRoom,
+        volumeFactor: options.diffRoomVolume,
+        filterAdded: false,
+        visualizationAdded: false
+    };
+
+    sound.on('play', function() {
+        if (player.sound.pmms.initialized) {
+            return;
+        }
+        hideLoadingIcon();
+
+        if (sound.duration() == NaN || sound.duration() == Infinity || sound.duration() == 0) {
+            options.offset = 0;
+            options.duration = false;
+            options.loop = false;
+        } else {
+            options.duration = sound.duration();
+        }
+
+        options.video = false; // Setting video to false as we're using Howler.js for audio
+
+        sendMessage('init', {
+            handle: handle,
+            options: options
+        });
+
+        player.sound.pmms.initialized = true;
+    });
+
+    sound.on('end', function() {
+        player.remove();
+    });
+
+    sound.on('play', function() {
+        if (options.filter && !player.sound.pmms.filterAdded) {
+            if (isRDR) {
+                applyPhonographFilter(sound);
+            } else {
+                applyRadioFilter(sound);
+            }
+            player.sound.pmms.filterAdded = true;
+        }
+
+        if (options.visualization && !player.sound.pmms.visualizationAdded) {
+            createAudioVisualization(player, options.visualization);
+            player.sound.pmms.visualizationAdded = true;
+        }
+    });
+
+    return player;
 }
+
 
 function getPlayer(handle, options) {
 	if (handle == undefined) {
