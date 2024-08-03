@@ -280,7 +280,7 @@ function initPlayer(id, handle, options) {
         hideLoadingIcon();
         sendMessage('playError', {
             url: options.url,
-            message: playerElem.error.message
+            message: playerElem.error ? playerElem.error.message : 'Unknown error'
         });
 
         if (!player.pmms.initialized) {
@@ -333,8 +333,12 @@ function initPlayer(id, handle, options) {
         }
     });
 
+    // Log player object to check pmms
+    console.log('Player object before play:', player);
+
     player.play();
 }
+
 
 function getPlayer(handle, options) {
 	if (handle == undefined) {
