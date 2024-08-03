@@ -5,6 +5,7 @@ var audioVisualizations = {};
 var currentServerEndpoint = '127.0.0.1:30120';
 
 
+
 function sendMessage(name, params) {
 	return fetch(`https://${resourceName}/${name}`, {
 		method: 'POST',
