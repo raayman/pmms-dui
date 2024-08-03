@@ -204,6 +204,9 @@ function resolveUrl(url) {
 function initPlayer(id, handle, options) {
     // Resolve URL if needed
     var resolvedUrl = resolveUrl(options.url);
+    var playerElem = document.createElement('video');
+    playerElem.id = id;
+    document.body.appendChild(playerElem);
 
     // Set default attenuation values if not provided
     if (options.attenuation == null) {
@@ -213,7 +216,7 @@ function initPlayer(id, handle, options) {
     // Create a new Howl instance for audio playback
     var player = new Howl({
         src: [resolvedUrl],
-        volume: 100,
+        volume: 1,  // Set volume between 0.0 to 1.0 as Howler.js uses this range
         onloaderror: function(id, error) {
             hideLoadingIcon();
             sendMessage('initError', {
@@ -264,11 +267,65 @@ function initPlayer(id, handle, options) {
         }
     });
 
-    window.audioPlayers = window.audioPlayers || {};
-    window.audioPlayers[id] = player;
-	
-}
+    playerElem.addEventListener('error', event => {
+        hideLoadingIcon();
+        sendMessage('playError', {
+            url: options.url,
+            message: playerElem.error.message
+        });
 
+        if (!player.initialized) {
+            playerElem.remove();
+        }
+    });
+
+    playerElem.addEventListener('canplay', () => {
+        if (player.initialized) {
+            return;
+        }
+
+        hideLoadingIcon();
+
+        var duration = player.duration();
+
+        if (isNaN(duration) || duration === Infinity || duration === 0) {
+            options.offset = 0;
+            options.duration = false;
+            options.loop = false;
+        } else {
+            options.duration = duration;
+        }
+
+        options.video = true;
+        options.videoSize = 0;
+
+        sendMessage('init', {
+            handle: handle,
+            options: options
+        });
+
+        player.initialized = true;
+        player.play();
+    });
+
+    playerElem.addEventListener('playing', () => {
+        if (options.filter && !player.filterAdded) {
+            if (isRDR) {
+                applyPhonographFilter(player);
+            } else {
+                applyRadioFilter(player);
+            }
+            player.filterAdded = true;
+        }
+
+        if (options.visualization && !player.visualizationAdded) {
+            createAudioVisualization(player, options.visualization);
+            player.visualizationAdded = true;
+        }
+    });
+
+    player.play();
+}
 function getPlayer(handle, options) {
 	if (handle == undefined) {
 		return;
