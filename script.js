@@ -215,7 +215,7 @@ function initPlayer(id, handle, options) {
 	    error: function(media) {
 		hideLoadingIcon();
 		sendMessage('initError', {
-		    url: options.url,
+		    url: proxyUrl,
 		    message: media.error.message
 		});
 		media.remove();
