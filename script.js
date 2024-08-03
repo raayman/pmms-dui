@@ -1,6 +1,6 @@
 const maxTimeDifference = 2;
 
-var resourceName = 'nass_musicplayer';
+var resourceName = 'pmms';
 var isRDR = true;
 var audioVisualizations = {};
 var currentServerEndpoint = '127.0.0.1:30120';
@@ -201,72 +201,80 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-    var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
-    var proxyUrl = options.url;
-    
-    var player = document.createElement('video');
-    player.id = id;
-    player.src = proxyUrl;
-    document.body.appendChild(player);
+    var playerContainer = document.createElement('div');
+    playerContainer.id = id;
+    document.body.appendChild(playerContainer);
 
-    // Create Howl instance
-    var howl = new Howl({
-        src: [proxyUrl],
+    if (options.attenuation == null) {
+        options.attenuation = {sameRoom: 0, diffRoom: 0};
+    }
+
+    const sound = new Howl({
+        src: [options.url],
+        html5: true,
         volume: 0,
+		autoplay: false,
+		format: ['mp3'],
         onloaderror: function(id, error) {
             hideLoadingIcon();
             sendMessage('initError', {
-                url: proxyUrl,
-                message: error.message
+                url: options.url,
+                message: error
             });
         },
         onplayerror: function(id, error) {
             hideLoadingIcon();
             sendMessage('playError', {
-                url: proxyUrl,
-                message: error.message
+                url: options.url,
+                message: error
             });
+            if (!sound._pmms.initialized) {
+                sound.unload();
+            }
         },
         onload: function() {
             hideLoadingIcon();
-            if (howl.duration() === Infinity || howl.duration() === 0) {
+            sound._pmms = {
+                initialized: false,
+                attenuationFactor: options.attenuation.diffRoom,
+                volumeFactor: options.diffRoomVolume
+            };
+
+            if (!isFinite(sound.duration()) || sound.duration() === 0) {
                 options.offset = 0;
                 options.duration = false;
                 options.loop = false;
             } else {
-                options.duration = howl.duration();
+                options.duration = sound.duration();
             }
 
             options.video = true;
             options.videoSize = 0;
+
             sendMessage('init', {
                 handle: handle,
                 options: options
             });
 
-            howl.volume(options.diffRoomVolume);
-            howl.play();
+            sound._pmms.initialized = true;
+            sound.play();
         },
         onplay: function() {
-            if (options.filter && !player.pmms.filterAdded) {
+            if (options.filter && !sound._pmms.filterAdded) {
                 if (isRDR) {
-                    applyPhonographFilter(howl);
+                    applyPhonographFilter(sound);
                 } else {
-                    applyRadioFilter(howl);
+                    applyRadioFilter(sound);
                 }
-                player.pmms.filterAdded = true;
+                sound._pmms.filterAdded = true;
             }
-            if (options.visualization && !player.pmms.visualizationAdded) {
-                createAudioVisualization(howl, options.visualization);
-                player.pmms.visualizationAdded = true;
+
+            if (options.visualization && !sound._pmms.visualizationAdded) {
+                createAudioVisualization(sound, options.visualization);
+                sound._pmms.visualizationAdded = true;
             }
         }
     });
-
-    player.pmms = {};
-    player.pmms.initialized = false;
-    player.pmms.attenuationFactor = options.attenuation.diffRoom;
-    player.pmms.volumeFactor = options.diffRoomVolume;
 }
 
 
