@@ -201,162 +201,83 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-    var isYouTube = options.url.includes('youtube.com') || options.url.includes('youtu.be');
-    if (isYouTube) {
-        var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
-        var proxyUrl = `http://51.81.49.239:3000/watch?v=${videoId}`;
-
-        var player = document.createElement('video');
-        player.id = id;
-        player.src = proxyUrl;
-        document.body.appendChild(player);
-
-        new MediaElement(player, {
-            error: function(media) {
-                hideLoadingIcon();
-                sendMessage('initError', {
-                    url: options.url,
-                    message: media.error.message
-                });
-                media.remove();
-            },
-            success: function(media, domNode) {
-                media.className = 'player';
-                media.pmms = {};
-                media.pmms.initialized = false;
-                media.pmms.attenuationFactor = options.attenuation.diffRoom;
-                media.pmms.volumeFactor = options.diffRoomVolume;
-                media.volume = 0;
-
-                media.addEventListener('error', event => {
-                    hideLoadingIcon();
-                    sendMessage('playError', {
-                        url: options.url,
-                        message: media.error.message
-                    });
-                    if (!media.pmms.initialized) {
-                        media.remove();
-                    }
-                });
-
-                media.addEventListener('canplay', () => {
-                    if (media.pmms.initialized) {
-                        return;
-                    }
-                    hideLoadingIcon();
-                    if (isNaN(media.duration) || media.duration == Infinity || media.duration == 0 || media.hlsPlayer) {
-                        options.offset = 0;
-                        options.duration = false;
-                        options.loop = false;
-                    } else {
-                        options.duration = media.duration;
-                    }
-
-                    options.video = true;
-                    options.videoSize = 0;
-                    sendMessage('init', {
-                        handle: handle,
-                        options: options
-                    });
-                    media.pmms.initialized = true;
-                    media.play();
-                });
-
-                media.addEventListener('playing', () => {
-                    if (options.filter && !media.pmms.filterAdded) {
-                        if (isRDR) {
-                            applyPhonographFilter(media);
-                        } else {
-                            applyRadioFilter(media);
-                        }
-                        media.pmms.filterAdded = true;
-                    }
-                    if (options.visualization && !media.pmms.visualizationAdded) {
-                        createAudioVisualization(media, options.visualization);
-                        media.pmms.visualizationAdded = true;
-                    }
-                });
-
-                media.play();
-            }
-        });
-    } else {
-        // Non-YouTube video setup
-        var player = document.createElement('video');
-        player.id = id;
-        player.src = resolveUrl(options.url);
-        document.body.appendChild(player);
-
-        new MediaElement(player, {
-            error: function(media) {
-                hideLoadingIcon();
-                sendMessage('initError', {
-                    url: options.url,
-                    message: media.error.message
-                });
-                media.remove();
-            },
-            success: function(media, domNode) {
-                media.className = 'player';
-                media.pmms = {};
-                media.pmms.initialized = false;
-                media.pmms.attenuationFactor = options.attenuation.diffRoom;
-                media.pmms.volumeFactor = options.diffRoomVolume;
-                media.volume = 0;
-
-                media.addEventListener('error', event => {
-                    hideLoadingIcon();
-                    sendMessage('playError', {
-                        url: options.url,
-                        message: media.error.message
-                    });
-                    if (!media.pmms.initialized) {
-                        media.remove();
-                    }
-                });
-
-                media.addEventListener('canplay', () => {
-                    if (media.pmms.initialized) {
-                        return;
-                    }
-                    hideLoadingIcon();
-                    if (isNaN(media.duration) || media.duration == Infinity || media.duration == 0 || media.hlsPlayer) {
-                        options.offset = 0;
-                        options.duration = false;
-                        options.loop = false;
-                    } else {
-                        options.duration = media.duration;
-                    }
-
-                    options.video = true;
-                    options.videoSize = 0;
-                    sendMessage('init', {
-                        handle: handle,
-                        options: options
-                    });
-                    media.pmms.initialized = true;
-                    media.play();
-                });
-
-                media.addEventListener('playing', () => {
-                    if (options.filter && !media.pmms.filterAdded) {
-                        if (isRDR) {
-                            applyPhonographFilter(media);
-                        } else {
-                            applyRadioFilter(media);
-                        }
-                        media.pmms.filterAdded = true;
-                    }
-                    if (options.visualization && !media.pmms.visualizationAdded) {
-                        createAudioVisualization(media, options.visualization);
-                        media.pmms.visualizationAdded = true;
-                    }
-                });
-
-                media.play();
-            }
-        });
-    }
+	var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
+	var proxyUrl = `http://51.81.49.239:3000/watch?v=${videoId}`;
+	
+	var player = document.createElement('video');
+	player.id = id;
+	player.src = proxyUrl;
+	document.body.appendChild(player);
+	
+	new MediaElement(player, {
+	    error: function(media) {
+		hideLoadingIcon();
+		sendMessage('initError', {
+		    url: options.url,
+		    message: media.error.message
+		});
+		media.remove();
+	    },
+	    success: function(media, domNode) {
+		media.className = 'player';
+		media.pmms = {};
+		media.pmms.initialized = false;
+		media.pmms.attenuationFactor = options.attenuation.diffRoom;
+		media.pmms.volumeFactor = options.diffRoomVolume;
+		media.volume = 0;
+	
+		media.addEventListener('error', event => {
+		    hideLoadingIcon();
+		    sendMessage('playError', {
+			url: options.url,
+			message: media.error.message
+		    });
+		    if (!media.pmms.initialized) {
+			media.remove();
+		    }
+		});
+	
+		media.addEventListener('canplay', () => {
+		    if (media.pmms.initialized) {
+			return;
+		    }
+		    hideLoadingIcon();
+		    if (isNaN(media.duration) || media.duration == Infinity || media.duration == 0 || media.hlsPlayer) {
+			options.offset = 0;
+			options.duration = false;
+			options.loop = false;
+		    } else {
+			options.duration = media.duration;
+		    }
+	
+		    options.video = true;
+		    options.videoSize = 0;
+		    sendMessage('init', {
+			handle: handle,
+			options: options
+		    });
+		    media.pmms.initialized = true;
+		    media.play();
+		});
+	
+		media.addEventListener('playing', () => {
+		    if (options.filter && !media.pmms.filterAdded) {
+			if (isRDR) {
+			    applyPhonographFilter(media);
+			} else {
+			    applyRadioFilter(media);
+			}
+			media.pmms.filterAdded = true;
+		    }
+		    if (options.visualization && !media.pmms.visualizationAdded) {
+			createAudioVisualization(media, options.visualization);
+			media.pmms.visualizationAdded = true;
+		    }
+		});
+	
+		media.play();
+	    }
+	});
 }
 
 function getPlayer(handle, options) {
