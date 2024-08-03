@@ -368,56 +368,68 @@ function setVolume(player, target) {
 }
 
 function update(data) {
-	var player = getPlayer(data.handle, data.options);
+    var player = getPlayer(data.handle, data.options);
 
-	if (player) {
-		if (data.options.paused || data.distance < 0 || data.distance > data.options.range) {
-			if (!player.paused) {
-				player.pause();
-			}
-		} else {
-			if (data.sameRoom) {
-				setAttenuationFactor(player, data.options.attenuation.sameRoom);
-				setVolumeFactor(player, 1.0);
-			} else {
-				setAttenuationFactor(player, data.options.attenuation.diffRoom);
-				setVolumeFactor(player, data.options.diffRoomVolume);
-			}
+    if (player) {
+        // Ensure player.pmms is initialized
+        if (!player.pmms) {
+            player.pmms = {
+                initialized: false,
+                attenuationFactor: data.options.attenuation.diffRoom,
+                volumeFactor: data.options.diffRoomVolume,
+                filterAdded: false,
+                visualizationAdded: false
+            };
+        }
 
-			if (player.readyState > 0) {
-				var volume;
+        if (data.options.paused || data.distance < 0 || data.distance > data.options.range) {
+            if (!player.paused) {
+                player.pause();
+            }
+        } else {
+            if (data.sameRoom) {
+                setAttenuationFactor(player, data.options.attenuation.sameRoom);
+                setVolumeFactor(player, 1.0);
+            } else {
+                setAttenuationFactor(player, data.options.attenuation.diffRoom);
+                setVolumeFactor(player, data.options.diffRoomVolume);
+            }
 
-				if (data.options.muted || data.volume == 0) {
-					volume = 0;
-				} else {
-					volume = (((100 - data.distance * player.pmms.attenuationFactor) / 100) * player.pmms.volumeFactor) * (data.volume / 100);
-				}
+            if (player.readyState > 0) {
+                var volume;
 
-				if (volume > 0) {
-					if (data.distance > 100) {
-						setVolume(player, volume);
-					} else {
-						player.volume = volume;
-					}
-				} else {
-					player.volume = 0;
-				}
+                if (data.options.muted || data.volume == 0) {
+                    volume = 0;
+                } else {
+                    volume = (((100 - data.distance * player.pmms.attenuationFactor) / 100) * player.pmms.volumeFactor) * (data.volume / 100);
+                }
 
-				if (data.options.duration) {
-					var currentTime = data.options.offset % player.duration;
+                if (volume > 0) {
+                    if (data.distance > 100) {
+                        setVolume(player, volume);
+                    } else {
+                        player.volume = volume;
+                    }
+                } else {
+                    player.volume = 0;
+                }
 
-					if (Math.abs(currentTime - player.currentTime) > maxTimeDifference) {
-						player.currentTime = currentTime;
-					}
-				}
+                if (data.options.duration) {
+                    var currentTime = data.options.offset % player.duration;
 
-				if (player.paused) {
-					player.play();
-				}
-			}
-		}
-	}
+                    if (Math.abs(currentTime - player.currentTime) > maxTimeDifference) {
+                        player.currentTime = currentTime;
+                    }
+                }
+
+                if (player.paused) {
+                    player.play();
+                }
+            }
+        }
+    }
 }
+
 
 function setResourceNameFromUrl() {
 	var url = new URL(window.location);
