@@ -4,8 +4,6 @@ var isRDR = true;
 var audioVisualizations = {};
 var currentServerEndpoint = '127.0.0.1:30120';
 
-
-
 function sendMessage(name, params) {
 	return fetch(`https://${resourceName}/${name}`, {
 		method: 'POST',
@@ -339,7 +337,6 @@ function initPlayer(id, handle, options) {
     player.play();
 }
 
-
 function getPlayer(handle, options) {
 	if (handle == undefined) {
 		return;
@@ -401,29 +398,33 @@ function stop(handle) {
 }
 
 function setAttenuationFactor(player, target) {
-	if (player.pmms.attenuationFactor > target) {
-		player.pmms.attenuationFactor -= 0.1;
-	} else {
-		player.pmms.attenuationFactor += 0.1;
-	}
+    if (player.pmms && typeof player.pmms.attenuationFactor !== 'undefined') {
+        if (player.pmms.attenuationFactor > target) {
+            player.pmms.attenuationFactor -= 0.1;
+        } else {
+            player.pmms.attenuationFactor += 0.1;
+        }
+    }
 }
 
 function setVolumeFactor(player, target) {
-	if (player.pmms.volumeFactor > target) {
-		player.pmms.volumeFactor -= 0.01;
-	} else {
-		player.pmms.volumeFactor += 0.01;
-	}
+    if (player.pmms && typeof player.pmms.volumeFactor !== 'undefined') {
+        if (player.pmms.volumeFactor > target) {
+            player.pmms.volumeFactor -= 0.01;
+        } else {
+            player.pmms.volumeFactor += 0.01;
+        }
+    }
 }
 
 function setVolume(player, target) {
-	if (Math.abs(player.volume - target) > 0.1) {
-		if (player.volume > target) {
-			player.volume -= 0.05;
-		} else{
-			player.volume += 0.05;
-		}
-	}
+    if (Math.abs(player.volume - target) > 0.1) {
+        if (player.volume > target) {
+            player.volume -= 0.05;
+        } else{
+            player.volume += 0.05;
+        }
+    }
 }
 
 function update(data) {
