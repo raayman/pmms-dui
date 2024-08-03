@@ -81,13 +81,32 @@ function resolveUrl(url) {
 	}
 }
 
+let diffRoomVolumeMultiplier = 1;
+function calculateDistance(sourcePosition, listenerPosition) {
+  // Implement your distance calculation logic here
+  // For example, using Euclidean distance:
+  const dx = sourcePosition.x - listenerPosition.x;
+  const dy = sourcePosition.y - listenerPosition.y;
+  const dz = sourcePosition.z - listenerPosition.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+
 function initPlayer(id, handle, options) {
   // Create a Howl object with options
+  const attenuationFactor = options.attenuation.sameRoom ? options.attenuation.sameRoom : options.attenuation.diffRoom;
+
+  // Calculate distance (replace with your actual positions)
+  const distance = calculateDistance(sourcePosition, listenerPosition);
+
+  // Calculate volume multiplier based on attenuation and diffRoomVolume
+  const volumeMultiplier = Math.max(0, 1 - (attenuationFactor * distance)) * diffRoomVolumeMultiplier;
+	
   const player = new Howl({
     src: resolveUrl(options.url), // Pass URL through resolver if needed
     autoplay: false, // Don't autoplay by default
     loop: options.loop || false, // Set loop based on options
-    volume: 0, // Set initial volume to 0
+    volume: options.volume * volumeMultiplier, // Apply volume multiplier
   });
 
   // Handle errors similar to MediaElement error handler
@@ -146,6 +165,14 @@ function initPlayer(id, handle, options) {
   }
 
   return player; // Return the created Howl object for further control
+}
+
+function setDiffRoomVolume(volumeMultiplier) {
+  diffRoomVolumeMultiplier = volumeMultiplier;
+  // Update volume of all existing Howl instances
+  Howler.howls.forEach(howl => {
+    howl.volume(howl._volume * volumeMultiplier);
+  });
 }
 
 
