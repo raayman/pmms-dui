@@ -5,8 +5,6 @@ var isRDR = true;
 var audioVisualizations = {};
 var currentServerEndpoint = '127.0.0.1:30120';
 
-import {Howl, Howler} from 'howler';
-
 function sendMessage(name, params) {
 	return fetch(`https://${resourceName}/${name}`, {
 		method: 'POST',
