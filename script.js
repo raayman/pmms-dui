@@ -274,6 +274,8 @@ function initPlayer(id, handle, options) {
         volumeFactor: options.diffRoomVolume
     };
 
+    console.log('Initialized player.pmms:', player.pmms);
+
     playerElem.addEventListener('error', event => {
         hideLoadingIcon();
         sendMessage('playError', {
@@ -333,6 +335,7 @@ function initPlayer(id, handle, options) {
 
     player.play();
 }
+
 function getPlayer(handle, options) {
 	if (handle == undefined) {
 		return;
