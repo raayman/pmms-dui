@@ -201,7 +201,7 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-	var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
+	/*var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
 	var proxyUrl = `http://51.81.49.239:3000/watch?v=${videoId}`;
 
         var player = document.createElement('div');
@@ -233,7 +233,7 @@ function initPlayer(id, handle, options) {
                     });
                 }
             }
-        });
+        });*/
 }
 
 function getPlayer(handle, options) {
