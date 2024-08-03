@@ -197,9 +197,12 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-    var player = document.createElement('video');
+    var player = document.createElement('iframe');
     player.id = id;
     player.src = resolveUrl(options.url);
+    player.width = options.width || '640';
+    player.height = options.height || '390';
+    player.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
     document.body.appendChild(player);
 
     if (options.attenuation == null) {
