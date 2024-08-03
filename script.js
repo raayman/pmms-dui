@@ -230,7 +230,7 @@ function getPlayer(handle, options) {
         playerContainer = initPlayer(id, handle, options);
     }
 
-    return playerContainer.sound;
+    return playerContainer ? playerContainer.sound : null;
 }
 
 function parseTimecode(timecode) {
@@ -262,6 +262,9 @@ function init(data) {
 
 function play(handle) {
     var player = getPlayer(handle);
+    if (player && !player.playing()) {
+        player.play();
+    }
 }
 
 function stop(handle) {
@@ -304,7 +307,7 @@ function setVolume(player, target) {
 function update(data) {
     var player = getPlayer(data.handle, data.options);
 
-    if (player) {
+    if (player && player._pmms) {
         if (data.options.paused || data.distance < 0 || data.distance > data.options.range) {
             if (player.playing()) {
                 player.pause();
