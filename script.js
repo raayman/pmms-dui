@@ -213,7 +213,7 @@ function initPlayer(id, handle, options) {
     // Create a new Howl instance for audio playback
     var player = new Howl({
         src: [resolvedUrl],
-        volume: options.diffRoomVolume || 0,
+        volume: 100,
         onloaderror: function(id, error) {
             hideLoadingIcon();
             sendMessage('initError', {
