@@ -202,7 +202,7 @@ function resolveUrl(url) {
 
 function initPlayer(id, handle, options) {
 	var videoId = options.url.split('v=')[1] || options.url.split('/').pop();
-	var proxyUrl = `http://51.81.49.239:3000/watch?v=${videoId}`;
+	var proxyUrl = options.url;
 	
 	var player = document.createElement('video');
 	player.id = id;
