@@ -1,5 +1,4 @@
 const maxTimeDifference = 2;
-
 var resourceName = 'pmms';
 var isRDR = true;
 var audioVisualizations = {};
