@@ -89,7 +89,7 @@ function initPlayer(id, handle, options) {
     src: resolveUrl(options.url), // Pass URL through resolver if needed
     autoplay: false, // Don't autoplay by default
     loop: options.loop || false, // Set loop based on options
-    volume: options.volume * volumeMultiplier, // Apply volume multiplier
+    volume: 1, // Apply volume multiplier
   });
 
   // Handle errors similar to MediaElement error handler
