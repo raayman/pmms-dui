@@ -266,6 +266,7 @@ function initPlayer(id, handle, options) {
 
     window.audioPlayers = window.audioPlayers || {};
     window.audioPlayers[id] = player;
+	
 }
 
 function getPlayer(handle, options) {
