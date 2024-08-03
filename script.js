@@ -201,115 +201,70 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-	var player = document.createElement('video');
-	player.id = id;
-	player.src = resolveUrl(options.url);
-	document.body.appendChild(player);
+    // Resolve URL if needed
+    var resolvedUrl = resolveUrl(options.url);
 
-	if (options.attenuation == null) {
-		options.attenuation = {sameRoom: 0, diffRoom: 0};
-	}
+    // Set default attenuation values if not provided
+    if (options.attenuation == null) {
+        options.attenuation = { sameRoom: 0, diffRoom: 0 };
+    }
 
-	new MediaElement(id, {
-		error: function(media) {
-			hideLoadingIcon();
+    // Create a new Howl instance for audio playback
+    var player = new Howl({
+        src: [resolvedUrl],
+        volume: options.diffRoomVolume || 0,
+        onloaderror: function(id, error) {
+            hideLoadingIcon();
+            sendMessage('initError', {
+                url: options.url,
+                message: error
+            });
+        },
+        onplayerror: function(id, error) {
+            hideLoadingIcon();
+            sendMessage('playError', {
+                url: options.url,
+                message: error
+            });
+        },
+        onload: function() {
+            hideLoadingIcon();
+            var duration = player.duration();
 
-			sendMessage('initError', {
-				url: options.url,
-				message: media.error.message
-			});
+            // Check and set options based on duration
+            if (isNaN(duration) || duration === Infinity || duration === 0) {
+                options.offset = 0;
+                options.duration = false;
+                options.loop = false;
+            } else {
+                options.duration = duration;
+            }
 
-			media.remove();
-		},
-		success: function(media, domNode) {
-			media.className = 'player';
+            sendMessage('init', {
+                handle: handle,
+                options: options
+            });
 
-			media.pmms = {};
-			media.pmms.initialized = false;
-			media.pmms.attenuationFactor = options.attenuation.diffRoom;
-			media.pmms.volumeFactor = options.diffRoomVolume;
+            // Play the audio
+            player.play();
+        },
+        onplay: function() {
+            if (options.filter) {
+                if (isRDR) {
+                    applyPhonographFilter(player);
+                } else {
+                    applyRadioFilter(player);
+                }
+            }
 
-			media.volume = 0;
+            if (options.visualization) {
+                createAudioVisualization(player, options.visualization);
+            }
+        }
+    });
 
-			media.addEventListener('error', event => {
-				hideLoadingIcon();
-
-				sendMessage('playError', {
-					url: options.url,
-					message: media.error.message
-				});
-
-				if (!media.pmms.initialized) {
-					media.remove();
-				}
-			});
-
-			media.addEventListener('canplay', () => {
-				if (media.pmms.initialized) {
-					return;
-				}
-
-				hideLoadingIcon();
-
-				var duration;
-				
-				if (media.duration == NaN || media.duration == Infinity || media.duration == 0 || media.hlsPlayer) {
-					options.offset = 0;
-					options.duration = false;
-					options.loop = false;
-				} else {
-					options.duration = media.duration;
-				}
-
-				if (media.youTubeApi) {
-					options.title = media.youTubeApi.getVideoData().title;
-
-					media.videoTracks = {length: 1};
-				} else if (media.hlsPlayer) {
-					media.videoTracks = media.hlsPlayer.videoTracks;
-				} else if (media.twitchPlayer) {
-					/* Auto-click Twitch mature content warning button. */
-					let button = media.twitchPlayer._iframe.contentWindow.document.querySelector('button[data-a-target="player-overlay-mature-accept"]');
-
-					if (button) {
-						button.click();
-					}
-				} else {
-					media.videoTracks = media.originalNode.videoTracks;
-				}
-
-				options.video = true;
-				options.videoSize = 0;
-
-				sendMessage('init', {
-					handle: handle,
-					options: options
-				});
-
-				media.pmms.initialized = true;
-
-				media.play();
-			});
-
-			media.addEventListener('playing', () => {
-				if (options.filter && !media.pmms.filterAdded) {
-					if (isRDR) {
-						applyPhonographFilter(media);
-					} else {
-						applyRadioFilter(media);
-					}
-					media.pmms.filterAdded = true;
-				}
-
-				if (options.visualization && !media.pmms.visualizationAdded) {
-					createAudioVisualization(media, options.visualization);
-					media.pmms.visualizationAdded = true;
-				}
-			});
-
-			media.play();
-		}
-	});
+    // Initialize the player with the Howl instance
+    document.body.appendChild(player);
 }
 
 function getPlayer(handle, options) {
