@@ -83,71 +83,54 @@ function resolveUrl(url) {
 
 
 function initPlayer(id, handle, options) {
-  // Create a Howl object with options
-	
-  const player = new Howl({
-    src: resolveUrl(options.url), // Pass URL through resolver if needed
-    autoplay: false, // Don't autoplay by default
-    loop: options.loop || false, // Set loop based on options
-    volume: 1, // Apply volume multiplier
-  });
+    var player = document.createElement('div');
+    player.id = id;
+    document.body.appendChild(player);
 
-  // Handle errors similar to MediaElement error handler
-  player.on('loaderror', () => {
-    hideLoadingIcon();
-    sendMessage('initError', {
-      url: options.url,
-      message: 'Failed to load audio'
+    if (options.attenuation == null) {
+        options.attenuation = { sameRoom: 0, diffRoom: 0 };
+    }
+
+    var sound = new Howl({
+        src: [resolveUrl(options.url)],
+        volume: options.diffRoomVolume || 0,
+        onloaderror: function(id, error) {
+            hideLoadingIcon();
+            sendMessage('initError', {
+                url: options.url,
+                message: error.message
+            });
+            sound.unload();
+        },
+        onplayerror: function(id, error) {
+            hideLoadingIcon();
+            sendMessage('playError', {
+                url: options.url,
+                message: error.message
+            });
+            sound.unload();
+        },
+        onload: function() {
+            hideLoadingIcon();
+
+            options.duration = sound.duration();
+            options.video = false;
+
+            sendMessage('init', {
+                handle: handle,
+                options: options
+            });
+
+            sound.play();
+        },
+        onplay: function() {
+            if (options.filter) {
+                applyAudioFilter(sound);
+            }
+        }
     });
-  });
 
-  // Handle canplay event similar to MediaElement canplay
-  player.on('load', () => {
-    if (player._sounds[0].loaded) { // Check if audio is fully loaded
-      hideLoadingIcon();
-
-      const duration = player.duration();
-      options.duration = duration !== Infinity ? duration : false;
-      options.offset = 0; // No offset handling in Howler.js
-
-      // Handle video specific options (not directly supported by Howl)
-      if (options.video) {
-        options.video = false; // Mark it as not video in Howler.js
-        console.warn('Howler.js doesn\'t support video playback directly.');
-      }
-
-      sendMessage('init', {
-        handle: handle,
-        options: options
-      });
-
-      // Play audio after sending init message
-      player.play();
-    }
-  });
-
-  // Handle playing event for visualizations and filters (if needed)
-  player.on('play', () => {
-    if (options.filter) {
-      console.warn('Howler.js doesn\'t directly support audio filters.');
-    }
-
-    if (options.visualization) {
-      createAudioVisualization(player, options.visualization);
-    }
-  });
-
-  // Handle volume attenuation (needs additional logic)
-  if (options.attenuation) {
-    console.warn('Howler.js doesn\'t directly support attenuation. Implement logic for adjusting volume based on attenuation values.');
-  }
-
-  // Handle diffRoomVolume (needs additional logic)
-  if (options.diffRoomVolume) {
-    console.warn('Howler.js volume is global. Implement logic for adjusting volume based on diffRoomVolume.');
-  }
-
-  return player; // Return the created Howl object for further control
+    sound.play();
 }
 
 
