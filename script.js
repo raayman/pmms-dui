@@ -217,7 +217,8 @@ function initPlayer(id, handle, options) {
     playerDiv.id = id;
     document.body.appendChild(playerDiv);
 
-   if (typeof options.attenuation === 'undefined' || options.attenuation === null) {
+    // Ensure options.attenuation is initialized properly
+    if (typeof options.attenuation === 'undefined' || options.attenuation === null) {
         options.attenuation = { sameRoom: 0, diffRoom: 0 };
     }
 
@@ -225,6 +226,7 @@ function initPlayer(id, handle, options) {
     if (typeof options.attenuation.diffRoom === 'undefined') {
         options.attenuation.diffRoom = 0;
     }
+
     function getYouTubeVideoId(url) {
         const urlObj = new URL(url);
         return urlObj.searchParams.get("v");
@@ -236,13 +238,24 @@ function initPlayer(id, handle, options) {
 
         player = new YT.Player(playerDiv.id, {
             videoId: videoId,
+            origin: window.location.href,
             playerVars: {
                 'autoplay': 1,
                 'controls': 0,
             },
             events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange,
+                'onReady': function(event){
+                    event.target.unMute();
+                    event.target.setVolume(0);
+                    event.target.playVideo();
+                    isReady(event.target.getIframe().id);
+                },
+                'onStateChange': function(event){
+                    if (event.data == YT.PlayerState.ENDED) {
+                        isLooped(event.target.getIframe().id);
+                        ended(event.target.getIframe().id);
+                    }
+                },
                 'onError': onPlayerError
             }
         });
@@ -291,15 +304,17 @@ function initPlayer(id, handle, options) {
         return url;
     }
 
-    // Adding volume control properties
-    function applyVolumeControl(media) {
-        media.pmms = {};
-        media.pmms.initialized = false;
-        media.pmms.attenuationFactor = options.attenuation.diffRoom;
-        media.pmms.volumeFactor = options.diffRoomVolume;
-        media.volume = 0;
-    }
+    // Handle the rest of the options and sendMessage logic
+    options.video = true;
+    options.videoSize = 0;
+
+    sendMessage('init', {
+        handle: handle,
+        options: options
+    });
+
 }
+
 
 
 function getPlayer(handle, options) {
