@@ -212,153 +212,66 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-	var player = document.createElement('div');
-	player.id = id;
-	player.src = resolveUrl(options.url);
-	document.body.appendChild(player);
+    // Create a div element for the YouTube player
+    var playerDiv = document.createElement('div');
+    playerDiv.id = id;
+    document.body.appendChild(playerDiv);
 
-	if (options.attenuation == null) {
-		options.attenuation = {sameRoom: 0, diffRoom: 0};
-	}
+    if (options.attenuation == null) {
+        options.attenuation = { sameRoom: 0, diffRoom: 0 };
+    }
 
-	function getYouTubeVideoId(url) {
-            const urlObj = new URL(url);
-            return urlObj.searchParams.get("v");
-        }
+    function getYouTubeVideoId(url) {
+        const urlObj = new URL(url);
+        return urlObj.searchParams.get("v");
+    }
 
-	function onYouTubeIframeAPIReady() {
+    function onYouTubeIframeAPIReady() {
+        const fullYouTubeUrl = resolveUrl(options.url);
+        const videoId = getYouTubeVideoId(fullYouTubeUrl);
 
-            const fullYouTubeUrl = resolveUrl(options.url);
-            const videoId = getYouTubeVideoId(fullYouTubeUrl);
-
-            player = new YT.Player('player', {
-                videoId: videoId,
-		origin: resolveUrl(options.url),
-                playerVars: {
-                    'autoplay': 1,
-		    'controls': 0,
-                },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange
-                }
-            });
-        }
-
-
-        function onPlayerReady(event) {
-            event.target.playVideo();
-        }
-
-        var done = false;
-        function onPlayerStateChange(event) {
-            if (event.data == YT.PlayerState.PLAYING && !done) {
-                setTimeout(stopVideo, 6000);
-                done = true;
+        player = new YT.Player(playerDiv.id, {
+            videoId: videoId,
+            origin: resolveUrl(options.url),
+            playerVars: {
+                'autoplay': 1,
+                'controls': 0,
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange,
+                'onError': onPlayerError
             }
+        });
+    }
+
+    function onPlayerReady(event) {
+        event.target.playVideo();
+    }
+
+    var done = false;
+    function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING && !done) {
+            setTimeout(stopVideo, 6000);
+            done = true;
         }
+    }
 
-        function stopVideo() {
-            player.stopVideo();
-        }
+    function stopVideo() {
+        player.stopVideo();
+    }
 
+    function onPlayerError(event) {
+        hideLoadingIcon();
+        sendMessage('initError', {
+            url: options.url,
+            message: 'Player encountered an error'
+        });
+        playerDiv.remove();
+    }
 
-	/*new MediaElement(id, {
-		error: function(media) {
-			hideLoadingIcon();
-
-			sendMessage('initError', {
-				url: options.url,
-				message: media.error.message
-			});
-
-			media.remove();
-		},
-		success: function(media, domNode) {
-			media.className = 'player';
-
-			media.pmms = {};
-			media.pmms.initialized = false;
-			media.pmms.attenuationFactor = options.attenuation.diffRoom;
-			media.pmms.volumeFactor = options.diffRoomVolume;
-
-			media.volume = 0;
-
-			media.addEventListener('error', event => {
-				hideLoadingIcon();
-
-				sendMessage('playError', {
-					url: options.url,
-					message: media.error.message
-				});
-
-				if (!media.pmms.initialized) {
-					media.remove();
-				}
-			});
-
-			media.addEventListener('canplay', () => {
-				if (media.pmms.initialized) {
-					return;
-				}
-
-				hideLoadingIcon();
-
-				var duration;
-				
-				if (media.duration == NaN || media.duration == Infinity || media.duration == 0 || media.hlsPlayer) {
-					options.offset = 0;
-					options.duration = false;
-					options.loop = false;
-				} else {
-					options.duration = media.duration;
-				}
-
-				if (media.youTubeApi) {
-					options.title = media.youTubeApi.getVideoData().title;
-
-					media.videoTracks = {length: 1};
-				} else if (media.hlsPlayer) {
-					media.videoTracks = media.hlsPlayer.videoTracks;
-				} else if (media.twitchPlayer) {
-					let button = media.twitchPlayer._iframe.contentWindow.document.querySelector('button[data-a-target="player-overlay-mature-accept"]');
-
-					if (button) {
-						button.click();
-					}
-				} else {
-					media.videoTracks = media.originalNode.videoTracks;
-				}
-
-				options.video = true;
-				options.videoSize = 0;
-
-				sendMessage('init', {
-					handle: handle,
-					options: options
-				});
-
-				media.pmms.initialized = true;
-
-				media.play();
-			});
-
-			media.addEventListener('playing', () => {
-				if (options.filter && !media.pmms.filterAdded) {
-					if (isRDR) {
-						applyPhonographFilter(media);
-					} else {
-						applyRadioFilter(media);
-					}
-					media.pmms.filterAdded = true;
-				}
-
-			});
-
-			media.play();
-		}
-	});*/
 }
+
 
 function getPlayer(handle, options) {
 	if (handle == undefined) {
