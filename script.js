@@ -90,7 +90,7 @@ function initPlayer(id, handle, options) {
         options.attenuation = { sameRoom: 0, diffRoom: 0 };
     }
 
-    var player = new YT.Player(id, {
+    var music = new YT.Player(id, {
 		videoId: options.url,
 		events: {
 			'onReady': function(event) {
