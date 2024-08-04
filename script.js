@@ -212,7 +212,7 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-	var player = document.createElement('video');
+	var player = document.createElement('div');
 	player.id = id;
 	player.src = resolveUrl(options.url);
 	document.body.appendChild(player);
@@ -221,32 +221,47 @@ function initPlayer(id, handle, options) {
 		options.attenuation = {sameRoom: 0, diffRoom: 0};
 	}
 
-	new YT.Player(id, {
-		startSeconds:0,
-		videoId: link,
+	function getYouTubeVideoId(url) {
+            const urlObj = new URL(url);
+            return urlObj.searchParams.get("v");
+        }
+
+	function onYouTubeIframeAPIReady() {
+
+            const fullYouTubeUrl = resolveUrl(options.url);
+            const videoId = getYouTubeVideoId(fullYouTubeUrl);
+
+            player = new YT.Player('player', {
+                videoId: videoId,
 		origin: resolveUrl(options.url),
-		enablejsapi: 1,
-		width: "0",
-		height: "0",
-		videoId: 'QuvqzlxEO6g',
-		playerVars: {
-			controls: 0,
-		},
-		events: {
-			'onReady': function(event){
-				event.target.unMute();
-				event.target.setVolume(0);
-				event.target.playVideo();
-				isReady(event.target.getIframe().id);
-			},
-			'onStateChange': function(event){
-				if (event.data == YT.PlayerState.ENDED) {
-					isLooped(event.target.getIframe().id);
-					ended(event.target.getIframe().id);
-				}
-			}
-		}
-	});
+                playerVars: {
+                    'autoplay': 1,
+		    'controls': 0,
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+
+        function onPlayerReady(event) {
+            event.target.playVideo();
+        }
+
+        var done = false;
+        function onPlayerStateChange(event) {
+            if (event.data == YT.PlayerState.PLAYING && !done) {
+                setTimeout(stopVideo, 6000);
+                done = true;
+            }
+        }
+
+        function stopVideo() {
+            player.stopVideo();
+        }
+
 
 	/*new MediaElement(id, {
 		error: function(media) {
