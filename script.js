@@ -232,7 +232,6 @@ function initPlayer(id, handle, options) {
 
         player = new YT.Player(playerDiv.id, {
             videoId: videoId,
-            origin: resolveUrl(options.url),
             playerVars: {
                 'autoplay': 1,
                 'controls': 0,
@@ -270,6 +269,32 @@ function initPlayer(id, handle, options) {
         playerDiv.remove();
     }
 
+    // Ensure the API script is loaded before calling onYouTubeIframeAPIReady
+    if (typeof YT === 'undefined' || typeof YT.Player === 'undefined') {
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+    } else {
+        onYouTubeIframeAPIReady();
+    }
+
+    // Mocked resolveUrl function
+    function resolveUrl(url) {
+        // Implement your URL resolution logic here
+        return url;
+    }
+
+    // Adding volume control properties
+    function applyVolumeControl(media) {
+        media.pmms = {};
+        media.pmms.initialized = false;
+        media.pmms.attenuationFactor = options.attenuation.diffRoom;
+        media.pmms.volumeFactor = options.diffRoomVolume;
+        media.volume = 0;
+    }
 }
 
 
