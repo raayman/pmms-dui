@@ -98,7 +98,8 @@ function initPlayer(id, handle, options) {
             hideLoadingIcon();
             sendMessage('initError', {
                 url: options.url,
-                message: error.message
+		id:id,
+                message: error
             });
             sound.unload();
         },
