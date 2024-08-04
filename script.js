@@ -5,64 +5,194 @@ var isRDR = false;
 var audioVisualizations = {};
 var currentServerEndpoint = '127.0.0.1:30120';
 
+
 function sendMessage(name, params) {
-	return fetch(`https://${resourceName}/${name}`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify(params)
+    return fetch(`https://${resourceName}/${name}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json(); // Assuming the response is JSON
+    })
+    .catch(error => {
+        console.error('There was a problem with the fetch operation:', error);
+        return null; // Handle the error gracefully, you can return null or handle it differently based on your requirements
+    });
+}
+
+function applyPhonographFilter(player) {
+	var context = new (window.AudioContext || window.webkitAudioContext)();
+
+	var source;
+
+	if (player.youTubeApi) {
+		var html5Player = player.youTubeApi.getIframe().contentWindow.document.querySelector('.html5-main-video');
+
+		source = context.createMediaElementSource(html5Player);
+	} else if (player.hlsPlayer) {
+		source = context.createMediaElementSource(player.hlsPlayer.media);
+	} else if (player.originalNode) {
+		source = context.createMediaElementSource(player.originalNode);
+	} else {
+		source = context.createMediaElementSource(player);
+	}
+
+	if (source) {
+		var splitter = context.createChannelSplitter(2);
+		var merger = context.createChannelMerger(2);
+
+		var gainNode = context.createGain();
+		gainNode.gain.value = 0.5;
+
+		var lowpass = context.createBiquadFilter();
+		lowpass.type = 'lowpass';
+		lowpass.frequency.value = 3000;
+		lowpass.gain.value = -1;
+
+		var highpass = context.createBiquadFilter();
+		highpass.type = 'highpass';
+		highpass.frequency.value = 300;
+		highpass.gain.value = -1;
+
+		source.connect(splitter);
+		splitter.connect(merger, 0, 0);
+		splitter.connect(merger, 1, 0);
+		splitter.connect(merger, 0, 1);
+		splitter.connect(merger, 1, 1);
+		merger.connect(gainNode);
+		gainNode.connect(lowpass);
+		lowpass.connect(highpass);
+		highpass.connect(context.destination);
+	}
+
+	var noise = document.createElement('audio');
+	noise.id = player.id + '_noise';
+	noise.src = 'https://redm.khzae.net/phonograph/noise.webm';
+	noise.volume = 0;
+	document.body.appendChild(noise);
+	noise.play();
+
+	player.style.filter = 'sepia()';
+
+	player.addEventListener('play', event => {
+		noise.play();
+	});
+	player.addEventListener('pause', event => {
+		noise.pause();
+	});
+	player.addEventListener('volumechange', event => {
+		noise.volume = player.volume;
+	});
+	player.addEventListener('seeked', event => {
+		noise.currentTime = player.currentTime;
 	});
 }
 
-function applyPhonographFilter(sound) {
-    sound._node.forEach(node => {
-        let context = node._audioNode[0].context;
-        let source = node._audioNode[0];
-        
-        let gainNode = context.createGain();
-        gainNode.gain.value = 0.5;
+function applyRadioFilter(player) {
+	var context = new (window.AudioContext || window.webkitAudioContext)();
 
-        let lowpass = context.createBiquadFilter();
-        lowpass.type = 'lowpass';
-        lowpass.frequency.value = 3000;
+	var source;
 
-        let highpass = context.createBiquadFilter();
-        highpass.type = 'highpass';
-        highpass.frequency.value = 300;
+	if (player.youTubeApi) {
+		var html5Player = player.youTubeApi.getIframe().contentWindow.document.querySelector('.html5-main-video');
 
-        source.connect(gainNode);
-        gainNode.connect(lowpass);
-        lowpass.connect(highpass);
-        highpass.connect(context.destination);
-    });
-}
+		source = context.createMediaElementSource(html5Player);
+	} else if (player.hlsPlayer) {
+		source = context.createMediaElementSource(player.hlsPlayer.media);
+	} else if (player.originalNode) {
+		source = context.createMediaElementSource(player.originalNode);
+	} else {
+		source = context.createMediaElementSource(player);
+	}
 
-function applyRadioFilter(sound) {
-    sound._node.forEach(node => {
-        let context = node._audioNode[0].context;
-        let source = node._audioNode[0];
-        
-        let gainNode = context.createGain();
-        gainNode.gain.value = 0.5;
+	if (source) {
+		var splitter = context.createChannelSplitter(2);
+		var merger = context.createChannelMerger(2);
 
-        let lowpass = context.createBiquadFilter();
-        lowpass.type = 'lowpass';
-        lowpass.frequency.value = 5000;
+		var gainNode = context.createGain();
+		gainNode.gain.value = 0.5;
 
-        let highpass = context.createBiquadFilter();
-        highpass.type = 'highpass';
-        highpass.frequency.value = 200;
+		var lowpass = context.createBiquadFilter();
+		lowpass.type = 'lowpass';
+		lowpass.frequency.value = 5000;
+		lowpass.gain.value = -1;
 
-        source.connect(gainNode);
-        gainNode.connect(lowpass);
-        lowpass.connect(highpass);
-        highpass.connect(context.destination);
-    });
+		var highpass = context.createBiquadFilter();
+		highpass.type = 'highpass';
+		highpass.frequency.value = 200;
+		highpass.gain.value = -1;
+
+		source.connect(splitter);
+		splitter.connect(merger, 0, 0);
+		splitter.connect(merger, 1, 0);
+		splitter.connect(merger, 0, 1);
+		splitter.connect(merger, 1, 1);
+		merger.connect(gainNode);
+		gainNode.connect(lowpass);
+		lowpass.connect(highpass);
+		highpass.connect(context.destination);
+	}
 }
 
 function createAudioVisualization(player, visualization) {
-	// Visualization code remains unchanged
+	var waveCanvas = document.createElement('canvas');
+	waveCanvas.id = player.id + '_visualization';
+	waveCanvas.style.position = 'absolute';
+	waveCanvas.style.top = '0';
+	waveCanvas.style.left = '0';
+	waveCanvas.style.width = '100%';
+	waveCanvas.style.height = '100%';
+
+	player.appendChild(waveCanvas);
+
+	var html5Player;
+
+	if (player.youTubeApi) {
+		html5Player = player.youTubeApi.getIframe().contentWindow.document.querySelector('.html5-main-video');
+	} else if (player.hlsPlayer) {
+		html5Player = player.hlsPlayer.media;
+	} else if (player.originalNode) {
+		html5Player = player.originalNode;
+	} else {
+		html5Player = player;
+	}
+
+	if (!html5Player.id) {
+		html5Player.id = player.id + '_html5Player';
+	}
+
+	html5Player.style.visibility = 'hidden';
+
+	var doc = player.youTubeApi ? player.youTubeApi.getIframe().contentWindow.document : document;
+
+	if (player.youTubeApi) {
+		player.youTubeApi.getIframe().style.visibility = 'hidden';
+	}
+
+	var wave = new Wave();
+
+	var options;
+
+	if (visualization) {
+		options = audioVisualizations[visualization] || {};
+
+		if (options.type == undefined) {
+			options.type = visualization;
+		}
+	} else {
+		options = {type: 'cubes'}
+	}
+
+	options.skipUserEventsWatcher = true;
+	options.elementDoc = doc;
+
+	wave.fromElement(html5Player.id, waveCanvas.id, options);
 }
 
 function showLoadingIcon() {
@@ -82,47 +212,138 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-    var player = document.createElement('div');
-    player.id = id;
-    document.body.appendChild(player);
+	var player = document.createElement('video');
+	player.id = id;
+	player.src = resolveUrl(options.url);
+	document.body.appendChild(player);
 
-    if (options.attenuation == null) {
-        options.attenuation = { sameRoom: 0, diffRoom: 0 };
-    }
+	if (options.attenuation == null) {
+		options.attenuation = {sameRoom: 0, diffRoom: 0};
+	}
 
-    var music = new YT.Player(id, {
-		videoId: options.url,
+	new YT.Player(id, {
+		startSeconds:0,
+		videoId: link,
+		origin: resolveUrl(options.url),
+		enablejsapi: 1,
+		width: "0",
+		height: "0",
+		videoId: 'QuvqzlxEO6g',
+		playerVars: {
+			controls: 0,
+		},
 		events: {
-			'onReady': function(event) {
-				hideLoadingIcon();
+			'onReady': function(event){
+				event.target.unMute();
+				event.target.setVolume(0);
+				event.target.playVideo();
+				isReady(event.target.getIframe().id);
+			},
+			'onStateChange': function(event){
+				if (event.data == YT.PlayerState.ENDED) {
+					isLooped(event.target.getIframe().id);
+					ended(event.target.getIframe().id);
+				}
+			}
+		}
+	});
+
+	/*new MediaElement(id, {
+		error: function(media) {
+			hideLoadingIcon();
+
+			sendMessage('initError', {
+				url: options.url,
+				message: media.error.message
+			});
+
+			media.remove();
+		},
+		success: function(media, domNode) {
+			media.className = 'player';
+
+			media.pmms = {};
+			media.pmms.initialized = false;
+			media.pmms.attenuationFactor = options.attenuation.diffRoom;
+			media.pmms.volumeFactor = options.diffRoomVolume;
+
+			media.volume = 0;
+
+			media.addEventListener('error', event => {
 				hideLoadingIcon();
 
-				options.duration = sound.duration();
-				options.video = false;
+				sendMessage('playError', {
+					url: options.url,
+					message: media.error.message
+				});
+
+				if (!media.pmms.initialized) {
+					media.remove();
+				}
+			});
+
+			media.addEventListener('canplay', () => {
+				if (media.pmms.initialized) {
+					return;
+				}
+
+				hideLoadingIcon();
+
+				var duration;
+				
+				if (media.duration == NaN || media.duration == Infinity || media.duration == 0 || media.hlsPlayer) {
+					options.offset = 0;
+					options.duration = false;
+					options.loop = false;
+				} else {
+					options.duration = media.duration;
+				}
+
+				if (media.youTubeApi) {
+					options.title = media.youTubeApi.getVideoData().title;
+
+					media.videoTracks = {length: 1};
+				} else if (media.hlsPlayer) {
+					media.videoTracks = media.hlsPlayer.videoTracks;
+				} else if (media.twitchPlayer) {
+					let button = media.twitchPlayer._iframe.contentWindow.document.querySelector('button[data-a-target="player-overlay-mature-accept"]');
+
+					if (button) {
+						button.click();
+					}
+				} else {
+					media.videoTracks = media.originalNode.videoTracks;
+				}
+
+				options.video = true;
+				options.videoSize = 0;
 
 				sendMessage('init', {
 					handle: handle,
 					options: options
 				});
-				event.target.playVideo();
-			},
-			'onStateChange': function(event) {
-				if (event.data == YT.PlayerState.PLAYING) {
-					if (options.filter && !event.target.filterAdded) {
-						if (isRDR) {
-							applyPhonographFilter(event.target);
-						} else {
-							applyRadioFilter(event.target);
-						}
-						event.target.filterAdded = true;
+
+				media.pmms.initialized = true;
+
+				media.play();
+			});
+
+			media.addEventListener('playing', () => {
+				if (options.filter && !media.pmms.filterAdded) {
+					if (isRDR) {
+						applyPhonographFilter(media);
+					} else {
+						applyRadioFilter(media);
 					}
+					media.pmms.filterAdded = true;
 				}
-			}
+
+			});
+
+			media.play();
 		}
-	});
+	});*/
 }
-
-
 
 function getPlayer(handle, options) {
 	if (handle == undefined) {
@@ -130,6 +351,7 @@ function getPlayer(handle, options) {
 	}
 
 	var id = 'player_' + handle.toString();
+
 	var player = document.getElementById(id);
 
 	if (!player && options && options.url) {
@@ -156,6 +378,7 @@ function init(data) {
 	}
 
 	showLoadingIcon();
+
 	data.options.offset = parseTimecode(data.options.offset);
 
 	if (!data.options.title) {
@@ -167,42 +390,54 @@ function init(data) {
 
 function play(handle) {
 	var player = getPlayer(handle);
-	if (player && player.sound) {
-		player.sound.play();
-	}
 }
 
 function stop(handle) {
 	var player = getPlayer(handle);
-	if (player && player.sound) {
-		player.sound.stop();
+
+	if (player) {
+		var noise = document.getElementById(player.id + '_noise');
+		if (noise) {
+			noise.remove();
+		}
+
 		player.remove();
 	}
 }
 
 function setAttenuationFactor(player, target) {
-	if (player.sound._volume > target) {
-		player.sound.volume(player.sound._volume - 0.1);
+	if (player.pmms.attenuationFactor > target) {
+		player.pmms.attenuationFactor -= 0.1;
 	} else {
-		player.sound.volume(player.sound._volume + 0.1);
+		player.pmms.attenuationFactor += 0.1;
 	}
 }
 
 function setVolumeFactor(player, target) {
-	if (player.sound._volume > target) {
-		player.sound.volume(player.sound._volume - 0.01);
+	if (player.pmms.volumeFactor > target) {
+		player.pmms.volumeFactor -= 0.01;
 	} else {
-		player.sound.volume(player.sound._volume + 0.01);
+		player.pmms.volumeFactor += 0.01;
+	}
+}
+
+function setVolume(player, target) {
+	if (Math.abs(player.volume - target) > 0.1) {
+		if (player.volume > target) {
+			player.volume -= 0.05;
+		} else{
+			player.volume += 0.05;
+		}
 	}
 }
 
 function update(data) {
 	var player = getPlayer(data.handle, data.options);
 
-	if (player && player.sound) {
+	if (player) {
 		if (data.options.paused || data.distance < 0 || data.distance > data.options.range) {
-			if (player.sound.playing()) {
-				player.sound.pause();
+			if (!player.paused) {
+				player.pause();
 			}
 		} else {
 			if (data.sameRoom) {
@@ -213,33 +448,35 @@ function update(data) {
 				setVolumeFactor(player, data.options.diffRoomVolume);
 			}
 
-			if (player.sound._state === 'loaded') {
+			if (player.readyState > 0) {
 				var volume;
+
 				if (data.options.muted || data.volume == 0) {
 					volume = 0;
 				} else {
-					volume = (((100 - data.distance * player.sound._volume) / 100) * player.sound._volume) * (data.volume / 100);
+					volume = (((100 - data.distance * player.pmms.attenuationFactor) / 100) * player.pmms.volumeFactor) * (data.volume / 100);
 				}
 
 				if (volume > 0) {
 					if (data.distance > 100) {
-						player.sound.volume(volume);
+						setVolume(player, volume);
 					} else {
-						player.sound.volume(volume);
+						player.volume = volume;
 					}
 				} else {
-					player.sound.volume(0);
+					player.volume = 0;
 				}
 
 				if (data.options.duration) {
-					var currentTime = data.options.offset % player.sound.duration();
-					if (Math.abs(currentTime - player.sound.seek()) > maxTimeDifference) {
-						player.sound.seek(currentTime);
+					var currentTime = data.options.offset % player.duration;
+
+					if (Math.abs(currentTime - player.currentTime) > maxTimeDifference) {
+						player.currentTime = currentTime;
 					}
 				}
 
-				if (!player.sound.playing()) {
-					player.sound.play();
+				if (player.paused) {
+					player.play();
 				}
 			}
 		}
@@ -255,7 +492,7 @@ function setResourceNameFromUrl() {
 window.addEventListener('message', event => {
 	switch (event.data.type) {
 		case 'init':
-			init(event.data.data);
+			init(event.data);
 			break;
 		case 'play':
 			play(event.data.handle);
