@@ -217,10 +217,14 @@ function initPlayer(id, handle, options) {
     playerDiv.id = id;
     document.body.appendChild(playerDiv);
 
-    if (options.attenuation == null) {
+   if (typeof options.attenuation === 'undefined' || options.attenuation === null) {
         options.attenuation = { sameRoom: 0, diffRoom: 0 };
     }
 
+    // Ensure the attenuationFactor property exists
+    if (typeof options.attenuation.diffRoom === 'undefined') {
+        options.attenuation.diffRoom = 0;
+    }
     function getYouTubeVideoId(url) {
         const urlObj = new URL(url);
         return urlObj.searchParams.get("v");
