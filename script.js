@@ -1,7 +1,7 @@
 const maxTimeDifference = 2;
 
-var resourceName = 'pmms';
-var isRDR = true;
+var resourceName = 'nass_musicplayer';
+var isRDR = false;
 var audioVisualizations = {};
 var currentServerEndpoint = '127.0.0.1:30120';
 
