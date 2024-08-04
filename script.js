@@ -212,109 +212,65 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-    // Create a div element for the YouTube player
-    var playerDiv = document.createElement('div');
-    playerDiv.id = id;
-    document.body.appendChild(playerDiv);
+  var playerDiv = document.createElement('div');
+  playerDiv.id = id;
+  document.body.appendChild(playerDiv);
 
-    // Ensure options.attenuation is initialized properly
-    if (typeof options.attenuation === 'undefined' || options.attenuation === null) {
-        options.attenuation = { sameRoom: 0, diffRoom: 0 };
-    }
+  if (options.attenuation == null) {
+    options.attenuation = {sameRoom: 0, diffRoom: 0};
+  }
 
-    // Ensure the attenuationFactor property exists
-    if (typeof options.attenuation.diffRoom === 'undefined') {
-        options.attenuation.diffRoom = 0;
-    }
+  function onPlayerError(event) {
+    hideLoadingIcon();
+    sendMessage('initError', {
+      url: options.url,
+      message: event.data
+    });
+  }
 
-    function getYouTubeVideoId(url) {
-        const urlObj = new URL(url);
-        return urlObj.searchParams.get("v");
-    }
+  function onPlayerReady(event) {
+    var player = event.target;
+    var duration = player.getDuration();
 
-    function onYouTubeIframeAPIReady() {
-        const fullYouTubeUrl = resolveUrl(options.url);
-        const videoId = getYouTubeVideoId(fullYouTubeUrl);
-
-        player = new YT.Player(playerDiv.id, {
-            videoId: videoId,
-            origin: window.location.href,
-            playerVars: {
-                'autoplay': 1,
-                'controls': 0,
-            },
-            events: {
-                'onReady': function(event){
-                    event.target.unMute();
-                    event.target.setVolume(0);
-                    event.target.playVideo();
-                    isReady(event.target.getIframe().id);
-                },
-                'onStateChange': function(event){
-                    if (event.data == YT.PlayerState.ENDED) {
-                        isLooped(event.target.getIframe().id);
-                        ended(event.target.getIframe().id);
-                    }
-                },
-                'onError': onPlayerError
-            }
-        });
-    }
-
-    function onPlayerReady(event) {
-        event.target.playVideo();
-    }
-
-    var done = false;
-    function onPlayerStateChange(event) {
-        if (event.data == YT.PlayerState.PLAYING && !done) {
-            setTimeout(stopVideo, 6000);
-            done = true;
-        }
-    }
-
-    function stopVideo() {
-        player.stopVideo();
-    }
-
-    function onPlayerError(event) {
-        hideLoadingIcon();
-        sendMessage('initError', {
-            url: options.url,
-            message: 'Player encountered an error'
-        });
-        playerDiv.remove();
-    }
-
-    // Ensure the API script is loaded before calling onYouTubeIframeAPIReady
-    if (typeof YT === 'undefined' || typeof YT.Player === 'undefined') {
-        var tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        var firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
-    } else {
-        onYouTubeIframeAPIReady();
-    }
-
-    // Mocked resolveUrl function
-    function resolveUrl(url) {
-        // Implement your URL resolution logic here
-        return url;
-    }
-
-    // Handle the rest of the options and sendMessage logic
+    options.duration = duration === NaN || duration === Infinity || duration === 0 ? false : duration;
+    options.title = player.getVideoData().title;
     options.video = true;
     options.videoSize = 0;
 
     sendMessage('init', {
-        handle: handle,
-        options: options
+      handle: handle,
+      options: options
     });
 
-}
+    player.playVideo();
+  }
 
+  function onPlayerStateChange(event) {
+    var player = event.target;
+    if (event.data == YT.PlayerState.PLAYING) {
+      if (options.filter && !player.pmms.filterAdded) {
+        applyRadioFilter(player);
+        player.pmms.filterAdded = true;
+      }
+
+      if (options.visualization && !player.pmms.visualizationAdded) {
+        createAudioVisualization(player, options.visualization);
+        player.pmms.visualizationAdded = true;
+      }
+    }
+  }
+
+  new YT.Player(id, {
+    height: '390',
+    width: '640',
+    videoId: options.url,
+    events: {
+      'onReady': onPlayerReady,
+      'onError': onPlayerError,
+      'onStateChange': onPlayerStateChange
+    }
+  });
+}
 
 
 function getPlayer(handle, options) {
