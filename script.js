@@ -248,6 +248,11 @@ function initPlayer(id, handle, options) {
                 'onError': onPlayerError
             }
         });
+		player.pmms = {};
+        player.pmms.initialized = false;
+        player.pmms.attenuationFactor = options.attenuation.diffRoom;
+        player.pmms.volumeFactor = options.diffRoomVolume;
+        player.volume = 0;
     }
     function onPlayerReady(event) {
         event.target.playVideo();
@@ -284,14 +289,6 @@ function initPlayer(id, handle, options) {
     function resolveUrl(url) {
         // Implement your URL resolution logic here
         return url;
-    }
-    // Adding volume control properties
-    function applyVolumeControl(media) {
-        media.pmms = {};
-        media.pmms.initialized = false;
-        media.pmms.attenuationFactor = options.attenuation.diffRoom;
-        media.pmms.volumeFactor = options.diffRoomVolume;
-        media.volume = 0;
     }
 }
 function getPlayer(handle, options) {
