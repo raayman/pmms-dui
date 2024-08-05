@@ -234,6 +234,10 @@ function initPlayer(id, handle, options) {
         const videoId = getYouTubeVideoId(fullYouTubeUrl);
         player = new YT.Player(playerDiv.id, {
             videoId: videoId,
+			startSeconds:Number,
+			enablejsapi: 1,
+			width: "0",
+			height: "0",
             playerVars: {
                 'autoplay': 1,
                 'controls': 0,
