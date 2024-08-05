@@ -212,64 +212,195 @@ function resolveUrl(url) {
 }
 
 function initPlayer(id, handle, options) {
-  var playerDiv = document.createElement('div');
-  playerDiv.id = id;
-  document.body.appendChild(playerDiv);
+    // Create a div element for the YouTube player
+    var playerDiv = document.createElement('div');
+    playerDiv.id = id;
+    document.body.appendChild(playerDiv);
 
-  if (options.attenuation == null) {
-    options.attenuation = {sameRoom: 0, diffRoom: 0};
-  }
-
-  function onPlayerError(event) {
-    hideLoadingIcon();
-    sendMessage('initError', {
-      url: options.url,
-      message: event.data
-    });
-  }
-
-  function onPlayerReady(event) {
-    var player = event.target;
-    var duration = player.getDuration();
-
-    options.duration = duration === NaN || duration === Infinity || duration === 0 ? false : duration;
-    options.title = player.getVideoData().title;
-    options.video = true;
-    options.videoSize = 0;
-
-    sendMessage('init', {
-      handle: handle,
-      options: options
-    });
-
-    player.playVideo();
-  }
-
-  function onPlayerStateChange(event) {
-    var player = event.target;
-    if (event.data == YT.PlayerState.PLAYING) {
-      if (options.filter && !player.pmms.filterAdded) {
-        applyRadioFilter(player);
-        player.pmms.filterAdded = true;
-      }
-
-      if (options.visualization && !player.pmms.visualizationAdded) {
-        createAudioVisualization(player, options.visualization);
-        player.pmms.visualizationAdded = true;
-      }
+   if (typeof options.attenuation === 'undefined' || options.attenuation === null) {
+        options.attenuation = { sameRoom: 0, diffRoom: 0 };
     }
-  }
 
-  new YT.Player(id, {
-    height: '390',
-    width: '640',
-    videoId: options.url,
-    events: {
-      'onReady': onPlayerReady,
-      'onError': onPlayerError,
-      'onStateChange': onPlayerStateChange
+    // Ensure the attenuationFactor property exists
+    if (typeof options.attenuation.diffRoom === 'undefined') {
+        options.attenuation.diffRoom = 0;
     }
-  });
+    function getYouTubeVideoId(url) {
+        const urlObj = new URL(url);
+        return urlObj.searchParams.get("v");
+    }
+    function onYouTubeIframeAPIReady() {
+        const fullYouTubeUrl = resolveUrl(options.url);
+        const videoId = getYouTubeVideoId(fullYouTubeUrl);
+        player = new YT.Player(playerDiv.id, {
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 1,
+                'controls': 0,
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange,
+                'onError': onPlayerError
+            }
+        });
+    }
+    function onPlayerReady(event) {
+        event.target.playVideo();
+    }
+    var done = false;
+    function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING && !done) {
+            setTimeout(stopVideo, 6000);
+            done = true;
+        }
+    }
+    function stopVideo() {
+        player.stopVideo();
+    }
+    function onPlayerError(event) {
+        hideLoadingIcon();
+        sendMessage('initError', {
+            url: options.url,
+            message: 'Player encountered an error'
+        });
+        playerDiv.remove();
+    }
+    // Ensure the API script is loaded before calling onYouTubeIframeAPIReady
+    if (typeof YT === 'undefined' || typeof YT.Player === 'undefined') {
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+    } else {
+        onYouTubeIframeAPIReady();
+    }
+    // Mocked resolveUrl function
+    function resolveUrl(url) {
+        // Implement your URL resolution logic here
+        return url;
+    }
+    // Adding volume control properties
+    function applyVolumeControl(media) {
+        media.pmms = {};
+        media.pmms.initialized = false;
+        media.pmms.attenuationFactor = options.attenuation.diffRoom;
+        media.pmms.volumeFactor = options.diffRoomVolume;
+        media.volume = 0;
+    }
+}
+function getPlayer(handle, options) {
+	if (handle == undefined) {
+		return;
+	}
+	var id = 'player_' + handle.toString();
+	var player = document.getElementById(id);
+	if (!player && options && options.url) {
+		player = initPlayer(id, handle, options);
+	}
+	return player;
+}
+function parseTimecode(timecode) {
+	if (typeof timecode != "string") {
+		return timecode;
+	} else if (timecode.includes(':')) {
+		var a = timecode.split(':');
+		return parseInt(a[0]) * 3600 + parseInt(a[1]) * 60 + parseInt(a[2]);
+	} else {
+		return parseInt(timecode);
+	}
+}
+function init(data) {
+	if (data.url == '') {
+		return;
+	}
+	showLoadingIcon();
+	data.options.offset = parseTimecode(data.options.offset);
+	if (!data.options.title) {
+		data.options.title = data.options.url;
+	}
+	getPlayer(data.handle, data.options);
+}
+function play(handle) {
+	var player = getPlayer(handle);
+}
+function stop(handle) {
+	var player = getPlayer(handle);
+	if (player) {
+		var noise = document.getElementById(player.id + '_noise');
+		if (noise) {
+			noise.remove();
+		}
+		player.remove();
+	}
+}
+function setAttenuationFactor(player, target) {
+	if (player.pmms.attenuationFactor > target) {
+		player.pmms.attenuationFactor -= 0.1;
+	} else {
+		player.pmms.attenuationFactor += 0.1;
+	}
+}
+function setVolumeFactor(player, target) {
+	if (player.pmms.volumeFactor > target) {
+		player.pmms.volumeFactor -= 0.01;
+	} else {
+		player.pmms.volumeFactor += 0.01;
+	}
+}
+function setVolume(player, target) {
+	if (Math.abs(player.volume - target) > 0.1) {
+		if (player.volume > target) {
+			player.volume -= 0.05;
+		} else{
+			player.volume += 0.05;
+		}
+	}
+}
+function update(data) {
+	var player = getPlayer(data.handle, data.options);
+	if (player) {
+		if (data.options.paused || data.distance < 0 || data.distance > data.options.range) {
+			if (!player.paused) {
+				player.pause();
+			}
+		} else {
+			if (data.sameRoom) {
+				setAttenuationFactor(player, data.options.attenuation.sameRoom);
+				setVolumeFactor(player, 1.0);
+			} else {
+				setAttenuationFactor(player, data.options.attenuation.diffRoom);
+				setVolumeFactor(player, data.options.diffRoomVolume);
+			}
+			if (player.readyState > 0) {
+				var volume;
+				if (data.options.muted || data.volume == 0) {
+					volume = 0;
+				} else {
+					volume = (((100 - data.distance * player.pmms.attenuationFactor) / 100) * player.pmms.volumeFactor) * (data.volume / 100);
+				}
+				if (volume > 0) {
+					if (data.distance > 100) {
+						setVolume(player, volume);
+					} else {
+						player.volume = volume;
+					}
+				} else {
+					player.volume = 0;
+				}
+				if (data.options.duration) {
+					var currentTime = data.options.offset % player.duration;
+					if (Math.abs(currentTime - player.currentTime) > maxTimeDifference) {
+						player.currentTime = currentTime;
+					}
+				}
+				if (player.paused) {
+					player.play();
+				}
+			}
+		}
+	}
 }
 
 
